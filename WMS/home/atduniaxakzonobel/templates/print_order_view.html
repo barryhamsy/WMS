@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Print Order - {{ order.dn_number }}</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 15mm;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            padding: 10px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .header h1 {
+            font-size: 18pt;
+            margin-bottom: 5px;
+        }
+        
+        .order-info {
+            margin-bottom: 20px;
+        }
+        
+        .order-info table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .order-info td {
+            padding: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .order-info td:first-child {
+            font-weight: bold;
+            background-color: #f5f5f5;
+            width: 25%;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            table-layout: fixed;
+        }
+        
+        .items-table th {
+            background-color: #333;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-size: 9pt;
+        }
+        
+        .items-table td {
+            padding: 6px;
+            border: 1px solid #ddd;
+            font-size: 9pt;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .items-table tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+        
+        /* Column widths */
+        .items-table col:nth-child(1) { width: 12%; }  /* Material */
+        .items-table col:nth-child(2) { width: 28%; }  /* Description */
+        .items-table col:nth-child(3) { width: 12%; }  /* Batch */
+        .items-table col:nth-child(4) { width: 12%; }  /* Shipment */
+        .items-table col:nth-child(5) { width: 8%; }   /* Qty */
+        .items-table col:nth-child(6) { width: 10%; }  /* Weight/Unit */
+        .items-table col:nth-child(7) { width: 10%; }  /* Total Weight */
+        .items-table col:nth-child(8) { width: 8%; }   /* Racking */
+        
+        .footer {
+            margin-top: 30px;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+            font-size: 9pt;
+        }
+        
+        /* Hide buttons when printing */
+        .no-print {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                padding: 0;
+            }
+            
+            .items-table tbody tr {
+                page-break-inside: avoid;
+            }
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Print Buttons (hidden when printing) -->
+    <div class="no-print">
+        <button onclick="window.print()" class="btn btn-primary">
+            🖨️ Print Now
+        </button>
+        <button onclick="window.close()" class="btn btn-secondary">
+            ✖ Close
+        </button>
+    </div>
+    
+    <!-- Header -->
+    <div class="header">
+        <h1>DELIVERY NOTE</h1>
+        <p><strong>DN #: {{ order.dn_number }}</strong></p>
+    </div>
+    
+    <!-- Order Information -->
+    <div class="order-info">
+        <table>
+            <tr>
+                <td>Sales Order:</td>
+                <td>{{ order.sales_order }}</td>
+                <td>Created At:</td>
+                <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            <tr>
+                <td>Customer Name:</td>
+                <td colspan="3">{{ order.customer_name }}</td>
+            </tr>
+            <tr>
+                <td>Delivery Address:</td>
+                <td colspan="3">{{ order.address }}</td>
+            </tr>
+            <tr>
+                <td>Created By:</td>
+                <td>{{ order.created_by }}</td>
+                <td>Status:</td>
+                <td><strong>{{ order.status }}</strong></td>
+            </tr>
+            <tr>
+                <td>Remarks:</td>
+                <td colspan="3">{{ order.remarks or 'N/A' }}</td>
+            </tr>
+            <tr>
+                <td>Total SKUs:</td>
+                <td>{{ total_sku }}</td>
+                <td>Total Quantity:</td>
+                <td>{{ total_quantity }}</td>
+            </tr>
+            <tr>
+                <td>Total Weight:</td>
+                <td colspan="3">{{ "%.2f"|format(total_weight) }} kg</td>
+            </tr>
+        </table>
+    </div>
+    
+    <!-- Order Items -->
+    <h3 style="margin-top: 20px;">Order Items:</h3>
+    <table class="items-table">
+        <colgroup>
+            <col style="width: 12%;">
+            <col style="width: 28%;">
+            <col style="width: 12%;">
+            <col style="width: 12%;">
+            <col style="width: 8%;">
+            <col style="width: 10%;">
+            <col style="width: 10%;">
+            <col style="width: 8%;">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>Material No.</th>
+                <th>Product Description</th>
+                <th>Batch</th>
+                <th>Shipment</th>
+                <th>Qty</th>
+                <th>Weight/Unit (kg)</th>
+                <th>Total Weight (kg)</th>
+                <th>Racking</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.items %}
+            <tr>
+                <td>{{ item.sku.material_number }}</td>
+                <td title="{{ item.sku.product_description }}">{{ item.sku.product_description }}</td>
+                <td>{{ item.batch_number }}</td>
+                <td>{{ item.shipment_number or 'N/A' }}</td>
+                <td style="text-align: center;">{{ item.quantity }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(item.sku.weight) }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(item.quantity * item.sku.weight) }}</td>
+                <td style="text-align: center;">{{ item.racking_number }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Footer / Signatures -->
+    <div class="footer">
+        <table style="width: 100%; border: none;">
+            <tr>
+                <td style="border: none; width: 50%;">
+                    <strong>Prepared by:</strong> {{ order.created_by }}<br>
+                    <strong>Date:</strong> {{ order.created_at.strftime('%Y-%m-%d') }}
+                </td>
+                <td style="border: none; width: 50%;">
+                    <strong>Received by:</strong> _______________________<br>
+                    <strong>Signature:</strong> _______________________<br>
+                    <strong>Date:</strong> _______________________
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

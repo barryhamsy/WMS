@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order {{ order.dn_number }}</title>
+
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 15mm 25mm 15mm;
+
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 8pt;
+                font-style: italic;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 9pt;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ===== FIXED TOP SECTION (REPEATS EVERY PAGE) ===== */
+        .top-section {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #333;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 5px;
+        }
+
+        .header img {
+            max-width: 150px;
+            height: auto;
+        }
+
+        .dn-number {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .order-info {
+            font-size: 9pt;
+        }
+
+        .order-info p {
+            margin: 2px 0;
+        }
+
+        /* ===== TABLE ===== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 20mm;
+        }
+
+        thead {
+            background-color: #cccccc;
+            display: table-header-group;
+        }
+
+        th, td {
+            border: 1px solid #333;
+            padding: 6px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            font-weight: bold;
+            font-size: 8pt;
+        }
+
+        td {
+            font-size: 9pt;
+        }
+
+        .product-desc {
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            max-width: 200px;
+        }
+
+        .material, .batch, .shipment, .quantity, .weight, .racking {
+            white-space: nowrap;
+        }
+
+        tr {
+            page-break-inside: avoid;
+        }
+
+        tbody tr:last-child {
+            page-break-after: avoid;
+        }
+    </style>
+</head>
+
+<body>
+<div style="height: 290px;"></div>
+    <!-- ===== FIXED HEADER SECTION ===== -->
+    <div class="top-section">
+        <div class="header">
+            <img src="{{ logo_path }}" alt="Logo">
+            <img src="{{ akzonobel_path }}" alt="AkzoNobel">
+        </div>
+
+        <div class="dn-number">DN #: {{ order.dn_number }}</div>
+
+        <div class="order-info">
+            <p><strong>Sales Order:</strong> {{ order.sales_order }}</p>
+            <p><strong>Customer Name:</strong> {{ order.customer_name }}</p>
+            <p><strong>Address:</strong> {{ order.address }}</p>
+
+            <p><strong>Created At:</strong> {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Created By:</strong> {{ order.created_by }}</p>
+            <p><strong>Remarks:</strong> {{ order.remarks }}</p>
+
+            <p><strong>Total SKUs:</strong> {{ total_sku }}</p>
+            <p><strong>Total Quantity:</strong> {{ total_quantity }}</p>
+            <p><strong>Total Weight:</strong> {{ "%.2f"|format(total_weight) }} kg</p>
+        </div>
+    </div>
+
+    <!-- ===== TABLE ===== -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 80px;">Material</th>
+                <th style="width: 200px;">Product Desc.</th>
+                <th style="width: 100px;">Batch No.</th>
+                <th style="width: 90px;">Shipment No.</th>
+                <th style="width: 50px;">Qty</th>
+                <th style="width: 80px;">Total Wt (kg)</th>
+                <th style="width: 70px;">Racking</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for item in order.items %}
+            <tr>
+                <td class="material">{{ item.sku.material_number }}</td>
+                <td class="product-desc">{{ item.sku.product_description }}</td>
+                <td class="batch">{{ item.batch_number }}</td>
+                <td class="shipment">{{ item.shipment_number or '' }}</td>
+                <td class="quantity">{{ item.quantity }}</td>
+                <td class="weight">{{ "%.2f"|format(item.quantity * item.sku.weight) }}</td>
+                <td class="racking">{{ item.racking_number }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

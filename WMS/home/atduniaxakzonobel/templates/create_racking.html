@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Racking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #C7C7C7; /* Modern light background */
+            color: #212529;
+        }
+
+        /* Updated navbar styling */
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            color: #adb5bd;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding-top: 40px;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .table th, .table td {
+            vertical-align: middle;
+            font-size: 0.95rem;
+            padding: 1rem;
+        }
+
+        .table th {
+            background-color: #495057;
+            color: #fff;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f8f9fa;
+        }
+
+        .alert {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .btn-primary, .btn-success, .btn-danger, .btn-secondary {
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover, .btn-success:hover, .btn-danger:hover, .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        h3 {
+            font-size: 1.75rem;
+            font-weight: 500;
+            margin-top: 2rem;
+        }
+
+        .table-container {
+            margin-top: 40px;
+        }
+
+        /* Responsive behavior */
+        @media (max-width: 768px) {
+            .table th, .table td {
+                font-size: 0.85rem;
+                padding: 0.75rem;
+            }
+
+            h2, h3 {
+                font-size: 1.75rem;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        /* Aisle button styling */
+        .aisle-buttons {
+            margin-bottom: 20px;
+        }
+
+        .aisle-buttons .btn {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <!-- Logout button as a small styled Bootstrap button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <h2 class="mb-4">Create Racking</h2>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Racking Creation Form -->
+    <form method="POST" action="{{ url_for('add_racking') }}">
+        <div class="mb-3">
+            <label for="aisle" class="form-label">Aisles</label>
+            <input type="text" name="aisle" id="aisle" class="form-control" placeholder="Enter aisles separated by commas (e.g., A,B,C)" required>
+        </div>
+        <div class="mb-3">
+            <label for="level" class="form-label">Bay Quantity</label>
+            <input type="number" name="level" id="level" class="form-control" placeholder="Enter number of bay per level" min="1" required>
+        </div>
+        <div class="mb-3">
+            <label for="position" class="form-label">Levels</label>
+            <input type="number" name="position" id="position" class="form-control" placeholder="Enter number of level" min="1" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Racking</button>
+    </form>
+
+    <hr>
+
+    <h3 class="mt-4">Filter Racking by Aisle</h3>
+    <div class="aisle-buttons">
+        <!-- "Show All" Button -->
+        <a href="{{ url_for('create_racking') }}" class="btn btn-secondary">Show All</a>
+        <!-- Dynamically generate aisle buttons -->
+        {% for aisle in unique_aisles %}
+            <a href="{{ url_for('create_racking', aisle=aisle) }}" class="btn btn-primary">Aisle {{ aisle }}</a>
+        {% endfor %}
+    </div>
+
+    <h3 class="mt-4">
+        {% if selected_aisle %}
+            Racking Data for Aisle {{ selected_aisle }}
+        {% else %}
+            All Racking Data
+        {% endif %}
+    </h3>
+    {% if racking_data %}
+        <div class="table-container">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Racking Number</th>
+                        <th>Aisle</th>
+                        <th>Bay</th>
+                        <th>Level</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rack in racking_data %}
+                        <tr>
+                            <td>{{ rack.racking_number }}</td>
+                            <td>{{ rack.aisle }}</td>
+                            <td>{{ rack.level }}</td>
+                            <td>{{ rack.position }}</td>
+                            <td>
+                                <a href="{{ url_for('delete_racking', racking_number=rack.racking_number) }}" class="btn btn-danger btn-sm">Delete</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No racking data available.</p>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

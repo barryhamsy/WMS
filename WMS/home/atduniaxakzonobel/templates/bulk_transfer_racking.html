@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bulk Transfer to Single Racking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #C7C7C7;
+            color: #212529;
+        }
+
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            color: #adb5bd;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            padding-top: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            border-radius: 8px;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background-color: #495057;
+            color: white;
+            font-weight: bold;
+            padding: 12px 20px;
+        }
+
+        .table {
+            background-color: #fff;
+        }
+
+        .table th {
+            background-color: #495057;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .selected-row {
+            background-color: #d1ecf1 !important;
+        }
+
+        .transfer-summary {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            border-top: 3px solid #007bff;
+            padding: 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .badge-selected {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .qty-input {
+            width: 100px;
+        }
+
+        .btn-transfer {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .search-box {
+            max-width: 500px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/transfer-stock">Single Transfer</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/bulk-transfer-racking">Bulk Transfer</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Container -->
+<div class="container mt-5">
+    <h1>📦 Bulk Transfer to Single Racking</h1>
+    <p class="lead">Select multiple stocks and transfer them all to one destination racking location.</p>
+
+    <!-- Search Box -->
+    <div class="search-box">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search by Material, Batch, or Racking...">
+    </div>
+
+    <!-- Stock Selection Card -->
+    <div class="card">
+        <div class="card-header">
+            📋 Select Stocks to Transfer
+            <span class="float-end badge-selected" id="selectedCount">0 items selected</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-hover table-sm mb-0" id="stockTable">
+                    <thead class="sticky-top">
+                        <tr>
+                            <th style="width: 50px;"></th>
+                            <th>Material Number</th>
+                            <th>Description</th>
+                            <th>Batch</th>
+                            <th>Current Racking</th>
+                            <th>Available Qty</th>
+                            <th style="width: 120px;">Transfer Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockTableBody">
+                        {% for stock in stocks %}
+                        <tr data-stock-id="{{ stock.id }}" 
+                            data-material="{{ stock.sku.material_number }}"
+                            data-batch="{{ stock.batch_number }}"
+                            data-racking="{{ stock.racking_number }}"
+                            data-max-qty="{{ stock.quantity }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input stock-checkbox">
+                            </td>
+                            <td><strong>{{ stock.sku.material_number }}</strong></td>
+                            <td>{{ stock.sku.product_description }}</td>
+                            <td>{{ stock.batch_number or 'N/A' }}</td>
+                            <td><span class="badge bg-secondary">{{ stock.racking_number }}</span></td>
+                            <td><strong>{{ stock.quantity }}</strong></td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm qty-input" 
+                                       min="1" max="{{ stock.quantity }}" 
+                                       placeholder="Qty" disabled>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Summary (Sticky Bottom) -->
+    <div class="transfer-summary">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <h5 class="mb-2">📍 Destination Racking:</h5>
+                <select class="form-select form-select-lg" id="destinationRacking" required>
+                    <option value="">Select destination...</option>
+                    {% for racking in racking_numbers %}
+                    <option value="{{ racking.racking_number }}">
+                        {{ racking.racking_number }} (Aisle {{ racking.aisle }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 text-center">
+                <h5 class="mb-2">Selected Items:</h5>
+                <div class="fs-3 text-primary" id="summaryCount">0</div>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-success btn-transfer" id="executeTransferBtn" disabled>
+                    ✓ Execute Transfer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let selectedStocks = new Set();
+
+    // Individual checkbox handling
+    document.querySelectorAll('.stock-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            toggleRowSelection(this.closest('tr'), this.checked);
+            updateSummary();
+        });
+    });
+
+    // Toggle row selection
+    function toggleRowSelection(row, isSelected) {
+        const qtyInput = row.querySelector('.qty-input');
+        
+        if (isSelected) {
+            row.classList.add('selected-row');
+            qtyInput.disabled = false;
+            qtyInput.value = row.dataset.maxQty; // Default to max quantity
+            selectedStocks.add(row.dataset.stockId);
+        } else {
+            row.classList.remove('selected-row');
+            qtyInput.disabled = true;
+            qtyInput.value = '';
+            selectedStocks.delete(row.dataset.stockId);
+        }
+    }
+
+    // Update summary
+    function updateSummary() {
+        const count = selectedStocks.size;
+        document.getElementById('selectedCount').textContent = `${count} items selected`;
+        document.getElementById('summaryCount').textContent = count;
+        
+        // Enable transfer button if items selected and destination chosen
+        const destination = document.getElementById('destinationRacking').value;
+        document.getElementById('executeTransferBtn').disabled = !(count > 0 && destination);
+    }
+
+    // Destination change
+    document.getElementById('destinationRacking').addEventListener('change', updateSummary);
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#stockTableBody tr');
+        
+        rows.forEach(row => {
+            const material = row.dataset.material.toLowerCase();
+            const batch = row.dataset.batch.toLowerCase();
+            const racking = row.dataset.racking.toLowerCase();
+            const description = row.children[2].textContent.toLowerCase();
+            
+            const matches = material.includes(searchTerm) || 
+                          batch.includes(searchTerm) || 
+                          racking.includes(searchTerm) ||
+                          description.includes(searchTerm);
+            
+            row.style.display = matches ? '' : 'none';
+        });
+    });
+
+    // Execute Transfer
+    document.getElementById('executeTransferBtn').addEventListener('click', function() {
+        const destination = document.getElementById('destinationRacking').value;
+        
+        if (!destination) {
+            alert('Please select a destination racking!');
+            return;
+        }
+
+        if (selectedStocks.size === 0) {
+            alert('Please select at least one stock to transfer!');
+            return;
+        }
+
+        // Collect transfer data
+        const transfers = [];
+        selectedStocks.forEach(stockId => {
+            const row = document.querySelector(`tr[data-stock-id="${stockId}"]`);
+            const qtyInput = row.querySelector('.qty-input');
+            const quantity = parseInt(qtyInput.value) || 0;
+            const maxQty = parseInt(row.dataset.maxQty);
+
+            if (quantity <= 0) {
+                alert(`Invalid quantity for ${row.dataset.material}`);
+                return;
+            }
+
+            if (quantity > maxQty) {
+                alert(`Quantity exceeds available stock for ${row.dataset.material} (max: ${maxQty})`);
+                return;
+            }
+
+            transfers.push({
+                stock_id: stockId,
+                quantity: quantity
+            });
+        });
+
+        if (transfers.length === 0) {
+            alert('No valid transfers to execute!');
+            return;
+        }
+
+        // Confirm
+        if (!confirm(`Transfer ${transfers.length} items to ${destination}?`)) {
+            return;
+        }
+
+        // Execute
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Transferring...';
+
+        fetch('/bulk-transfer-racking/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                transfers: transfers,
+                destination_racking: destination
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✓ Success! Transferred ${data.successful.length} items to ${destination}`);
+                if (data.failed.length > 0) {
+                    alert(`⚠ Failed transfers: ${data.failed.length}`);
+                    console.log('Failed:', data.failed);
+                }
+                location.reload();
+            } else {
+                alert(`Error: ${data.error}`);
+                this.disabled = false;
+                this.innerHTML = '✓ Execute Transfer';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error executing transfer!');
+            this.disabled = false;
+            this.innerHTML = '✓ Execute Transfer';
+        });
+    });
+</script>
+
+</body>
+</html>

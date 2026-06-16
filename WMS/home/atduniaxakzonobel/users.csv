@@ -1,0 +1,2 @@
+id,username,email,password,date_created,last_login,is_active,is_approved,is_admin
+1,barryhamsy,3circledesign@gmail.com,pbkdf2:sha256:600000$A6aKVbd5o8X6bEtZ$5d88a6cdac2923215d7b97742201ded7ba3717c05a7190d83bc5cf87418a3559,2024-10-09 12:34:18.368131,,1,1,1

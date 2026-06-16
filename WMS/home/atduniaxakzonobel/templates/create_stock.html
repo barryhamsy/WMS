@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Goods Receiving</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+   <style>
+        body {
+            background-color: #C7C7C7; /* Modern light background */
+            color: #212529;
+        }
+
+        /* Updated navbar styling */
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            color: #adb5bd;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding-top: 40px;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .table th, .table td {
+            vertical-align: middle;
+            font-size: 0.95rem;
+            padding: 1rem;
+        }
+
+        .table th {
+            background-color: #495057;
+            color: #fff;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f8f9fa;
+        }
+
+        .alert {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .btn-primary, .btn-success, .btn-danger {
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover, .btn-success:hover, .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        h4 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-top: 2rem;
+        }
+
+        .table-container {
+            margin-top: 40px;
+        }
+
+        /* Responsive behavior */
+        @media (max-width: 768px) {
+            .table th, .table td {
+                font-size: 0.85rem;
+                padding: 0.75rem;
+            }
+
+            h2, h4 {
+                font-size: 1.75rem;
+            }
+        }
+
+       .hidden {
+            display: none;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <!-- Logout button as a small styled Bootstrap button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <h1 class="text-center">Upload file Goods Receiving</h1>
+
+    <div id="alert_message" class="alert d-none" role="alert"></div>
+
+    <a href="/manual-gr" class="btn btn-success">Manual GR</a>
+    <br>
+    <br>
+        <!-- Show a sample of the correct Excel format -->
+    <h3 class="text-center">Sample Excel Format</h3>
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Material Number</th>
+                <th>Quantity</th>
+                <th>Batch Number</th>
+                <th>Shipment Number</th>
+                <th>Racking Number</th>
+                <th>Remarks</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>535566</td>
+                <td>100</td>
+                <td>3A2656466</td>
+                <td>VN1585</td>
+                <td>A-01-01</td>
+                <td>OK</td>
+            </tr>
+            <tr>
+                <td>535659</td>
+                <td>50</td>
+                <td>3A2656599</td>
+                <td>VN1644</td>
+                <td>A-01-02</td>
+                <td>DENTED</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+    <!-- Upload Form -->
+    <form id="upload_stock_form" enctype="multipart/form-data">
+        <div class="mb-4">
+            <label for="file" class="form-label">Upload Stock Excel File:</label>
+            <input type="file" id="file" name="file" class="form-control" accept=".xlsx, .xls" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Preview</button>
+    </form>
+
+    <!-- Search Form -->
+    <div class="hidden">
+        <label for="material_number_search" class="form-label">Search Material Number:</label>
+        <div class="input-group">
+            <input type="text" id="material_number_search" class="form-control" placeholder="Enter Material Number">
+            <button id="search_sku_btn" class="btn btn-primary">Search</button>
+        </div>
+        <div id="search_result" class="mt-3"></div>
+    </div>
+
+    <form id="add_stock_form" class="d-none">
+        <div class="card p-4 shadow">
+            <h3>SKU Details</h3>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="material_number" class="form-label">Material Number:</label>
+                    <input type="text" id="material_number" class="form-control" disabled>
+                </div>
+                <div class="col-md-6">
+                    <label for="product_description" class="form-label">Product Description:</label>
+                    <input type="text" id="product_description" class="form-control" disabled>
+                </div>
+            </div>
+
+            <h3>Stock Information</h3>
+            <div class="row mb-3">
+                <div class="col-md-2">
+                    <label for="quantity" class="form-label">Quantity:</label>
+                    <input type="number" id="quantity" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="batch_number" class="form-label">Batch Number:</label>
+                    <input type="text" id="batch_number" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="shipment_number" class="form-label">Shipment Number:</label>
+                    <input type="text" id="shipment_number" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="racking_number" class="form-label">Racking Number:</label>
+                    <select id="racking_number" class="form-control" name="racking_number">
+                        {% for racking in racking_numbers %}
+                        <option value="{{ racking.racking_number }}">{{ racking.racking_number }} (Aisle {{ racking.aisle }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="remarks" class="form-label">Remarks:</label>
+                    <input type="text" id="remarks" class="form-control">
+                </div>
+            </div>
+
+            <button type="button" id="add_to_list_btn" class="btn btn-success">Add to Preview List</button>
+        </div>
+    </form>
+
+    <h3 class="mt-5">Preview Stock List</h3>
+    <table class="table table-striped table-bordered mt-3">
+        <thead class="table-dark">
+        <tr>
+            <th>Material Number</th>
+            <th>Product Description</th>
+            <th>Quantity</th>
+            <th>Batch Number</th>
+            <th>Shipment Number</th>
+            <th>Racking Number</th>
+            <th>Remarks</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody id="preview_body">
+        <!-- Dynamic content will go here -->
+        </tbody>
+    </table>
+
+    <button id="submit_stock_btn" class="btn btn-success mt-4">Submit All</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Handle stock upload and preview
+document.getElementById('upload_stock_form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const formData = new FormData(this);
+
+    fetch('/preview-stock', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            const previewBody = document.getElementById('preview_body');
+            const submitButton = document.getElementById('submit_stock_btn');
+            previewBody.innerHTML = '';  // Clear previous data
+
+            // Process the stock list and add to the preview
+            processStockList(data.stock_list);
+        }
+    })
+    .catch(error => alert('Error uploading file: ' + error.message));
+});
+
+// Function to process stock entries and check capacity
+function processStockList(stockList) {
+    const previewBody = document.getElementById('preview_body');
+    let hasExceededCapacity = false;
+
+    // Create a map to track quantities by racking number
+    const rackingMap = {};
+
+    stockList.forEach(stock => {
+        const rackingNumber = stock.racking_number;
+        const quantity = stock.quantity;
+
+        // Check current quantity in the database for this racking number
+        fetch('/check-racking-capacity', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ racking_number: rackingNumber })
+        })
+        .then(response => response.json())
+        .then(capacityData => {
+            if (capacityData.error) {
+                alert('Error: ' + capacityData.error);
+                return;
+            }
+
+            const currentDbQuantity = capacityData.current_quantity;
+
+            // Determine maximum capacity based on product description
+            let maxCapacity = getMaxCapacity(stock.product_description);
+
+            // Update the total quantity in the racking map
+            if (!rackingMap[rackingNumber]) {
+                rackingMap[rackingNumber] = 0; // Initialize
+            }
+            rackingMap[rackingNumber] += quantity; // Add incoming quantity
+
+            // Calculate total quantity including what's already in the preview
+            const totalQuantity = rackingMap[rackingNumber] + currentDbQuantity;
+
+            // Check if total quantity exceeds capacity
+            if (totalQuantity > maxCapacity) {
+                hasExceededCapacity = true;
+                // Add row with a class indicating capacity exceeded
+                addRowToPreview(previewBody, stock, 'table-danger');
+                alert(`Capacity exceeded for Racking Number: ${rackingNumber}. Maximum allowed: ${maxCapacity}, Current quantity: ${currentDbQuantity}, Incoming quantity: ${quantity}.`);
+            } else {
+                // Add the row without exceeding class
+                addRowToPreview(previewBody, stock);
+            }
+
+            // Update submit button status
+            document.getElementById('submit_stock_btn').disabled = hasExceededCapacity;
+        });
+    });
+}
+
+// Function to add a row to the preview table
+function addRowToPreview(previewBody, stock, rowClass = '') {
+    const rackingDropdown = `
+        <select class="form-control racking-dropdown">
+            {% for racking in racking_numbers %}
+            <option value="{{ racking.racking_number }}" ${stock.racking_number === "{{ racking.racking_number }}" ? "selected" : ""}>
+                {{ racking.racking_number }} (Aisle {{ racking.aisle }})
+            </option>
+            {% endfor %}
+        </select>
+    `;
+
+    const row = `<tr class="${rowClass}">
+        <td>${stock.material_number}</td>
+        <td>${stock.product_description}</td>
+        <td><input type="number" value="${stock.quantity}" class="form-control quantity-input" /></td>
+        <td>${stock.batch_number}</td>
+        <td>${stock.shipment_number}</td>
+        <td>${rackingDropdown}</td>
+        <td>${stock.remarks}</td>
+        <td>
+            <button class="btn btn-danger btn-sm remove_btn">Remove</button>
+        </td>
+    </tr>`;
+    previewBody.insertAdjacentHTML('beforeend', row);
+}
+
+// Object to store the pack sizes dynamically from the server
+let packSizes = {};
+
+// Fetch pack sizes when the page loads
+fetch('/get-pack-sizes')
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error fetching pack sizes: ' + data.error);
+        } else {
+            // Store the pack sizes data in a JS object for later use
+            data.pack_sizes.forEach(pack => {
+                packSizes[pack.size] = pack.max_capacity;
+            });
+        }
+    })
+    .catch(error => alert('Error fetching pack sizes: ' + error.message));
+
+// Function to dynamically get the max capacity based on product description
+function getMaxCapacity(productDescription) {
+    // Iterate through packSizes to find a match in productDescription
+    for (const [packSize, maxCapacity] of Object.entries(packSizes)) {
+        if (productDescription.includes(packSize)) {
+            return maxCapacity;  // Return the max capacity if a match is found
+        }
+    }
+    return 0;  // If no pack size matches, return 0 as capacity
+}
+
+// Handle removal of stock items from the preview list
+document.addEventListener('click', function(event) {
+    if (event.target.classList.contains('remove_btn')) {
+        const row = event.target.closest('tr');
+        row.remove();
+        updateSubmitButtonStatus();
+    }
+});
+
+// Update the submit button status based on current rows
+function updateSubmitButtonStatus() {
+    const rows = document.querySelectorAll('#preview_body tr');
+    const submitButton = document.getElementById('submit_stock_btn');
+    let hasExceededCapacity = false;
+
+    rows.forEach(row => {
+        if (row.classList.contains('table-danger')) {
+            hasExceededCapacity = true;
+        }
+    });
+
+    // Enable or disable the submit button based on the presence of exceeded rows
+    submitButton.disabled = hasExceededCapacity;
+}
+
+// Handle change event on racking dropdowns
+document.addEventListener('change', function(event) {
+    if (event.target.classList.contains('racking-dropdown')) {
+        const row = event.target.closest('tr');
+        const rackingNumber = event.target.value;
+        const materialNumber = row.cells[0].innerText; // Get material number from the row
+        const quantity = row.querySelector('.quantity-input').value; // Get quantity from the row
+
+        // Check racking capacity
+        checkRackingCapacity(rackingNumber, materialNumber, quantity).then(response => {
+            if (response.error) {
+                // Highlight the row red if there’s an error
+                row.classList.add('table-danger');
+            } else {
+                // Remove red highlight if there’s enough space
+                row.classList.remove('table-danger');
+            }
+            // Update the submit button status
+            updateSubmitButtonStatus();
+        }).catch(error => {
+            console.error('Error checking racking capacity:', error);
+            // You may want to handle the error here (e.g., highlight the row in red)
+            row.classList.add('table-danger');
+            updateSubmitButtonStatus();
+        });
+    }
+});
+
+// Function to check racking capacity
+function checkRackingCapacity(rackingNumber, materialNumber, quantity) {
+    return fetch('/check-racking-capacity', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ racking_number: rackingNumber, material_number: materialNumber, quantity: parseInt(quantity) })
+    }).then(response => response.json());
+}
+
+// Handle search SKU button
+document.getElementById('search_sku_btn').addEventListener('click', function() {
+    const materialNumber = document.getElementById('material_number_search').value;
+
+    fetch('/search-sku', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ material_number: materialNumber })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById('search_result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            document.getElementById('add_stock_form').classList.add('d-none');
+        } else {
+            document.getElementById('material_number').value = data.material_number;
+            document.getElementById('product_description').value = data.product_description;
+            document.getElementById('add_stock_form').classList.remove('d-none');
+        }
+    });
+});
+
+// Add manual stock entry to the preview list
+document.getElementById('add_to_list_btn').addEventListener('click', function() {
+    const materialNumber = document.getElementById('material_number').value;
+    const productDescription = document.getElementById('product_description').value;
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const batchNumber = document.getElementById('batch_number').value;
+    const shipmentNumber = document.getElementById('shipment_number').value;
+    const rackingNumber = document.getElementById('racking_number').value; // Assuming this is a select input
+    const remarks = document.getElementById('remarks').value;
+
+    if (!materialNumber || !productDescription || !quantity || !rackingNumber) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    // Check the current quantity in the database for the same racking number
+    fetch('/check-racking-capacity', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ racking_number: rackingNumber })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+
+        const currentDbQuantity = data.current_quantity;
+
+        // Determine max capacity based on product description
+        let maxCapacity = getMaxCapacity(productDescription);
+
+        // Check current quantities in the preview table for the same racking number
+        let totalQuantityInPreview = currentDbQuantity;
+        const rows = document.querySelectorAll('#preview_body tr');
+        rows.forEach(row => {
+            const existingRackingNumber = row.cells[5].innerText;
+            const existingQuantity = parseInt(row.cells[2].querySelector('input').value);
+            if (existingRackingNumber === rackingNumber) {
+                totalQuantityInPreview += existingQuantity; // Add existing quantities
+            }
+        });
+
+        // If adding the new quantity will exceed the racking capacity
+        if (totalQuantityInPreview + quantity > maxCapacity) {
+            // Allow the row to be added but highlight it
+            const rowClass = 'table-danger';
+            addRowToPreview(previewBody, { material_number: materialNumber, product_description: productDescription, quantity: quantity, batch_number: batchNumber, shipment_number: shipmentNumber, racking_number: rackingNumber, remarks: remarks }, rowClass);
+            alert(`Racking capacity exceeded. Maximum allowed is ${maxCapacity}, current in database is ${currentDbQuantity}, and in preview is ${totalQuantityInPreview}.`);
+        } else {
+            // Add the new row to the preview stock list
+            addRowToPreview(previewBody, { material_number: materialNumber, product_description: productDescription, quantity: quantity, batch_number: batchNumber, shipment_number: shipmentNumber, racking_number: rackingNumber, remarks: remarks });
+        }
+
+        updateSubmitButtonStatus(); // Check if submit button should be disabled
+    })
+    .catch(error => alert('Error checking racking capacity: ' + error.message));
+});
+
+// Submit all stock entries
+document.getElementById('submit_stock_btn').addEventListener('click', function() {
+    const rows = document.querySelectorAll('#preview_body tr');
+    const stockList = [];
+
+    rows.forEach(row => {
+        const materialNumber = row.cells[0].innerText;
+        const quantity = row.cells[2].querySelector('input').value;
+        const batchNumber = row.cells[3].innerText;
+        const shipmentNumber = row.cells[4].innerText;
+        const rackingNumber = row.querySelector('.racking-dropdown').value;
+        const remarks = row.cells[6].innerText;
+
+        stockList.push({
+            material_number: materialNumber,
+            quantity: parseInt(quantity),
+            batch_number: batchNumber,
+            shipment_number: shipmentNumber,
+            racking_number: rackingNumber,
+            remarks: remarks
+        });
+    });
+
+    fetch('/submit-stock', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ stock_list: stockList })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            alert('Stocks successfully submitted!');
+            location.reload();
+        }
+    })
+    .catch(error => alert('Error submitting stocks: ' + error.message));
+});
+
+// Disable submit button initially
+document.getElementById('submit_stock_btn').disabled = true;
+
+
+
+</script>
+</body>
+</html>

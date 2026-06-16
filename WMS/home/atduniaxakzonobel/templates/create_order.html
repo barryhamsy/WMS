@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Create Order</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- jQuery for AJAX -->
+    <style>
+        body {
+            background-color: #C7C7C7;
+            color: #212529;
+        }
+
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            color: #adb5bd;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding-top: 40px;
+        }
+
+        .btn-primary,
+        .btn-success,
+        .btn-danger {
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover,
+        .btn-success:hover,
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        h4 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            h2,
+            h4 {
+                font-size: 1.75rem;
+            }
+        }
+        .autocomplete-results {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            width: calc(100% - 30px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .autocomplete-results.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .autocomplete-item .material-number {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .autocomplete-item:hover .material-number,
+        .autocomplete-item.active .material-number {
+            color: white;
+        }
+
+        .autocomplete-item .product-desc {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .autocomplete-item:hover .product-desc,
+        .autocomplete-item.active .product-desc {
+            color: #f0f0f0;
+        }
+
+        .no-results {
+            padding: 10px 15px;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Loading indicator */
+        #material_number.is-loading {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="none" stroke="%23007bff" stroke-width="4"><animate attributeName="stroke-dasharray" dur="1.5s" repeatCount="indefinite" values="1,200;100,200;100,200"/><animate attributeName="stroke-dashoffset" dur="1.5s" repeatCount="indefinite" values="0;-15;-125"/></circle></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+            <a class="navbar-brand" href="/">Inventory System</a>
+
+            <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+                </ul>
+                <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                    <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h2>Create a New Order</h2>
+
+        <form id="orderForm">
+            <div class="row mb-3">
+                <div class="col-md-4 form-group">
+                    <label for="sales_order" class="form-label">SO Number</label>
+                    <input type="text" id="sales_order" class="form-control" required>
+                    <div class="invalid-feedback">Sales Order Number is required.</div>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="dn_number" class="form-label">DN Number</label>
+                    <input type="text" id="dn_number" class="form-control" required>
+                    <div class="invalid-feedback">DN Number is required.</div>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="customer_name" class="form-label">Customer Name</label>
+                    <input type="text" id="customer_name" class="form-control" required>
+                    <div class="invalid-feedback">Customer Name is required.</div>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="address" class="form-label">Destination</label>
+                    <textarea id="address" class="form-control" required></textarea>
+                    <div class="invalid-feedback">Destination is required.</div>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="remarks" class="form-label">Remarks</label>
+                    <textarea id="remarks" class="form-control"></textarea>
+                </div>
+            </div>
+
+            <h4>Order Items</h4>
+            <div class="row mb-3">
+                <div class="col-md-4 form-group">
+                    <label for="material_number" class="form-label">Material Number / Product Description</label>
+                    <input type="text" id="material_number" class="form-control"
+                           placeholder="Search by material number or product name..."
+                           autocomplete="off">
+                    <div id="autocomplete_results" class="autocomplete-results"></div>
+                    <div class="invalid-feedback">Material Number is required.</div>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="product_description" class="form-label">Product Description</label>
+                    <input type="text" id="product_description" class="form-control" readonly>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="batch_number" class="form-label">Batch Number</label>
+                    <select id="batch_number" class="form-control" required></select>
+                    <div class="invalid-feedback">Batch Number is required.</div>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="shipment_number" class="form-label">Shipment Number</label>
+                    <select id="shipment_number" class="form-control"></select>
+                    <div class="invalid-feedback">Shipment Number is required.</div>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label for="quantity" class="form-label">Quantity</label>
+                    <input type="number" id="quantity" class="form-control" min="1" required>
+                    <div class="invalid-feedback">Quantity is required and must be greater than 0.</div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4 form-group">
+                    <label for="racking_number" class="form-label">Racking Number</label>
+                    <select id="racking_number" class="form-control" required></select>
+                    <div class="invalid-feedback">Racking Number is required.</div>
+                </div>
+                <div class="col-md-4 form-group align-self-end">
+                    <button type="button" id="add_to_preview_btn" class="btn btn-primary">Add to Preview List</button>
+                </div>
+            </div>
+        </form>
+
+        <h4 class="mt-5">Preview Order Items</h4>
+        <table class="table table-striped table-bordered mt-3" id="preview_table">
+            <thead class="table-dark">
+                <tr>
+                    <th>Material Number</th>
+                    <th>Product Description</th>
+                    <th>Batch Number</th>
+                    <th>Shipment Number</th>
+                    <th>Quantity</th>
+                    <th>Weight (per unit)</th>
+                    <th>Total Weight</th>
+                    <th>Racking Number</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="preview_body">
+                <!-- Dynamic content will go here -->
+            </tbody>
+        </table>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <small id="total_weight_display" style="color: #333;">Total Weight: 0.00 kg</small>
+            <button id="submit_order_btn" class="btn btn-success">Submit Order</button>
+        </div>
+        <div id="order_response" class="mt-3"></div>
+        <a href="/view-order" class="btn btn-secondary mt-2" id="view_order_btn" style="display: none;">View Order</a>
+    </div>
+
+    <!-- Bootstrap Modal for Success/Failure Notification -->
+    <div class="modal fade" id="orderModal" tabindex="-1" aria-labelledby="orderModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="orderModalLabel">Order Status</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="orderModalBody">
+                    <!-- Dynamic message content -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+$(document).ready(function () {
+    let availableQuantities = {};
+    let totalWeight = 0;
+    let productDescription = '';
+    let weightPerItem = 0;
+
+    // Fetch SKU details when material number is blurred
+    $('#material_number').on('blur', function () {
+        const materialNumber = $(this).val();
+        if (materialNumber) {
+            $.ajax({
+                url: '/get-sku-info',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ material_number: materialNumber }),
+                success: function (response) {
+                    $('#batch_number').empty();
+                    $('#racking_number').empty();
+                    $('#shipment_number').empty();
+                    productDescription = response.product_description;
+                    weightPerItem = parseFloat(response.weight);
+                    // Automatically display the product description
+                    $('#product_description').val(productDescription);
+
+                    // Store available quantities
+                    availableQuantities = response.available_quantities;
+
+                    // Populate batch numbers - only show batches with available quantity > 0
+                    $.each(response.batch_numbers, function (index, batch) {
+                        // Check if this batch has any available quantity
+                        let hasQuantity = false;
+                        if (availableQuantities[batch]) {
+                            for (let rack in availableQuantities[batch]) {
+                                for (let ship in availableQuantities[batch][rack]) {
+                                    if (availableQuantities[batch][rack][ship] > 0) {
+                                        hasQuantity = true;
+                                        break;
+                                    }
+                                }
+                                if (hasQuantity) break;
+                            }
+                        }
+
+                        // Only add batch if it has quantity available
+                        if (hasQuantity) {
+                            $('#batch_number').append('<option value="' + batch + '">' + batch + '</option>');
+                        }
+                    });
+
+                    // Trigger change event to populate racking numbers
+                    $('#batch_number').trigger('change');
+                },
+                error: function () {
+                    alert('Error fetching SKU details.');
+                }
+            });
+        }
+    });
+
+    // Update racking numbers when batch number changes
+    $('#batch_number').on('change', function() {
+        const selectedBatch = $(this).val();
+        $('#racking_number').empty();
+        $('#shipment_number').empty();
+        if (availableQuantities[selectedBatch]) {
+            const rackingNumbers = Object.keys(availableQuantities[selectedBatch]);
+            $.each(rackingNumbers, function(index, rack) {
+                $('#racking_number').append('<option value="' + rack + '">' + rack + '</option>');
+            });
+        }
+        // Trigger change event to populate shipment numbers
+        $('#racking_number').trigger('change');
+    });
+
+    // Update shipment numbers when racking number changes
+    $('#racking_number').on('change', function() {
+        const selectedBatch = $('#batch_number').val();
+        const selectedRacking = $(this).val();
+        $('#shipment_number').empty();
+        if (availableQuantities[selectedBatch] && availableQuantities[selectedBatch][selectedRacking]) {
+            const shipmentNumbers = Object.keys(availableQuantities[selectedBatch][selectedRacking]);
+            $.each(shipmentNumbers, function(index, shipment) {
+                const displayShipment = shipment || 'N/A';
+                $('#shipment_number').append('<option value="' + shipment + '">' + displayShipment + '</option>');
+            });
+        }
+        // Trigger update of available quantity
+        updateAvailableQuantity();
+    });
+
+    // Update available quantity display when batch, racking, or shipment number changes
+    $('#batch_number, #racking_number, #shipment_number').on('change', updateAvailableQuantity);
+
+    function updateAvailableQuantity() {
+        const selectedBatch = $('#batch_number').val();
+        const selectedRacking = $('#racking_number').val();
+        const selectedShipment = $('#shipment_number').val() || "N/A";
+        const materialNumber = $('#material_number').val();
+        let usedQuantity = 0;
+
+        $('#preview_body tr').each(function () {
+            const rowMaterial = $(this).find('td:eq(0)').text();
+            const rowBatch = $(this).find('td:eq(2)').text();
+            const rowShipment = $(this).find('td:eq(3)').text() || "N/A";
+            const rowQuantity = parseInt($(this).find('td:eq(4)').text(), 10);
+            const rowRacking = $(this).find('td:eq(7)').text();
+
+            if (rowMaterial === materialNumber && rowBatch === selectedBatch && rowRacking === selectedRacking && rowShipment === selectedShipment) {
+                usedQuantity += rowQuantity;
+            }
+        });
+
+        let availableQuantity = 0;
+        if (availableQuantities[selectedBatch] &&
+            availableQuantities[selectedBatch][selectedRacking] &&
+            availableQuantities[selectedBatch][selectedRacking][selectedShipment]) {
+            availableQuantity = availableQuantities[selectedBatch][selectedRacking][selectedShipment] - usedQuantity;
+        } else {
+            availableQuantity = -usedQuantity; // No available quantity; show negative used quantity
+        }
+
+        $('#available_quantity_display').remove();
+        $('#quantity').after(`<small id="available_quantity_display" style="color: #333;">Available quantity: ${availableQuantity}</small>`);
+    }
+
+    $('#add_to_preview_btn').on('click', function () {
+        const materialNumber = $('#material_number').val();
+        const batchNumber = $('#batch_number').val();
+        const shipmentNumber = $('#shipment_number').val() || "N/A";
+        const quantity = parseInt($('#quantity').val(), 10);
+        const rackingNumber = $('#racking_number').val();
+
+        if (!materialNumber || !batchNumber || !quantity || !rackingNumber || !shipmentNumber) {
+            alert('Please fill in all fields.');
+            return;
+        }
+
+        const availableQuantityText = $('#available_quantity_display').text();
+        const availableQuantity = parseInt(availableQuantityText.split(': ')[1], 10);
+        if (quantity > availableQuantity) {
+            alert('Insufficient quantity available. Please adjust the quantity.');
+            return;
+        }
+
+        const totalItemWeight = (weightPerItem * quantity).toFixed(2);
+        totalWeight += parseFloat(totalItemWeight);
+
+        const row = `<tr>
+            <td>${materialNumber}</td>
+            <td>${productDescription}</td>
+            <td>${batchNumber}</td>
+            <td>${shipmentNumber}</td>
+            <td>${quantity}</td>
+            <td>${weightPerItem.toFixed(2)} kg</td>
+            <td>${totalItemWeight} kg</td>
+            <td>${rackingNumber}</td>
+            <td>
+                <button class="btn btn-warning btn-sm edit_btn me-1" data-batch="${batchNumber}" data-shipment="${shipmentNumber}" data-quantity="${quantity}" data-weight="${totalItemWeight}" data-material="${materialNumber}" data-racking="${rackingNumber}" data-description="${productDescription}" data-weight-per-item="${weightPerItem}">Edit</button>
+                <button class="btn btn-danger btn-sm remove_btn" data-batch="${batchNumber}" data-shipment="${shipmentNumber}" data-quantity="${quantity}" data-weight="${totalItemWeight}" data-material="${materialNumber}" data-racking="${rackingNumber}">Remove</button>
+            </td>
+        </tr>`;
+        $('#preview_body').append(row);
+        updateTotalWeightDisplay();
+        resetFormFields();
+    });
+
+    $(document).on('click', '.remove_btn', function () {
+        const weightToRemove = parseFloat($(this).data('weight'));
+        totalWeight -= weightToRemove;
+        $(this).closest('tr').remove();
+        updateTotalWeightDisplay();
+        updateAvailableQuantity();
+    });
+
+    // Edit button handler - makes row editable inline
+    $(document).on('click', '.edit_btn', function () {
+        const $button = $(this);
+        const $row = $button.closest('tr');
+        const materialNumber = $button.data('material');
+        const batchNumber = $button.data('batch');
+        const shipmentNumber = $button.data('shipment');
+        const quantity = $button.data('quantity');
+        const rackingNumber = $button.data('racking');
+        const weightPerItemValue = $button.data('weight-per-item');
+
+        // Fetch SKU info to get available options
+        $.ajax({
+            url: '/get-sku-info',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ material_number: materialNumber }),
+            success: function (response) {
+                const availQty = response.available_quantities || {};
+
+                // Build batch dropdown - only show batches with available quantity > 0
+                let batchOptions = '';
+                $.each(response.batch_numbers, function(index, batch) {
+                    // Check if this batch has any available quantity
+                    let hasQuantity = false;
+                    if (availQty[batch]) {
+                        for (let rack in availQty[batch]) {
+                            for (let ship in availQty[batch][rack]) {
+                                if (availQty[batch][rack][ship] > 0) {
+                                    hasQuantity = true;
+                                    break;
+                                }
+                            }
+                            if (hasQuantity) break;
+                        }
+                    }
+
+                    // Only add batch if it has quantity available OR if it's the current batch
+                    if (hasQuantity || batch === batchNumber) {
+                        const selected = batch === batchNumber ? 'selected' : '';
+                        batchOptions += `<option value="${batch}" ${selected}>${batch}</option>`;
+                    }
+                });
+
+                // Build racking dropdown for current batch
+                let rackingOptions = '';
+                if (availQty[batchNumber]) {
+                    $.each(Object.keys(availQty[batchNumber]), function(index, rack) {
+                        const selected = rack === rackingNumber ? 'selected' : '';
+                        rackingOptions += `<option value="${rack}" ${selected}>${rack}</option>`;
+                    });
+                }
+
+                // Build shipment dropdown
+                let shipmentOptions = '';
+                if (availQty[batchNumber] && availQty[batchNumber][rackingNumber]) {
+                    $.each(Object.keys(availQty[batchNumber][rackingNumber]), function(index, ship) {
+                        const displayShip = ship || 'N/A';
+                        const selected = ship === shipmentNumber ? 'selected' : '';
+                        shipmentOptions += `<option value="${ship}" ${selected}>${displayShip}</option>`;
+                    });
+                }
+
+                // Calculate initial available quantity
+                let initialAvailQty = 0;
+                if (availQty[batchNumber] && availQty[batchNumber][rackingNumber] && availQty[batchNumber][rackingNumber][shipmentNumber]) {
+                    initialAvailQty = availQty[batchNumber][rackingNumber][shipmentNumber];
+                }
+
+                // Replace row with editable version
+                $row.html(`
+                    <td>${materialNumber}</td>
+                    <td>${response.product_description}</td>
+                    <td><select class="form-control form-control-sm edit-batch">${batchOptions}</select></td>
+                    <td><select class="form-control form-control-sm edit-shipment">${shipmentOptions}</select></td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm edit-quantity" value="${quantity}" min="1" style="width: 80px;">
+                        <small class="text-muted edit-avail-qty">Available: ${initialAvailQty}</small>
+                    </td>
+                    <td>${weightPerItemValue.toFixed(2)} kg</td>
+                    <td class="edit-total-weight">${(weightPerItemValue * quantity).toFixed(2)} kg</td>
+                    <td><select class="form-control form-control-sm edit-racking">${rackingOptions}</select></td>
+                    <td>
+                        <button class="btn btn-success btn-sm save_edit_btn me-1" data-material="${materialNumber}" data-weight-per-item="${weightPerItemValue}" data-orig-weight="${weightPerItemValue * quantity}">Save</button>
+                        <button class="btn btn-secondary btn-sm cancel_edit_btn" data-material="${materialNumber}" data-batch="${batchNumber}" data-shipment="${shipmentNumber}" data-quantity="${quantity}" data-racking="${rackingNumber}" data-description="${response.product_description}" data-weight-per-item="${weightPerItemValue}">Cancel</button>
+                    </td>
+                `);
+
+                // Store available quantities for this row
+                $row.data('availQty', availQty);
+
+                // Function to update available quantity display
+                function updateEditAvailableQuantity() {
+                    const currentBatch = $row.find('.edit-batch').val();
+                    const currentRacking = $row.find('.edit-racking').val();
+                    const currentShipment = $row.find('.edit-shipment').val();
+
+                    let availableQty = 0;
+                    if (availQty[currentBatch] && availQty[currentBatch][currentRacking] && availQty[currentBatch][currentRacking][currentShipment]) {
+                        availableQty = availQty[currentBatch][currentRacking][currentShipment];
+                    }
+
+                    $row.find('.edit-avail-qty').text('Available: ' + availableQty);
+                }
+
+                // Handle batch change
+                $row.find('.edit-batch').on('change', function() {
+                    const newBatch = $(this).val();
+                    const $rackingSelect = $row.find('.edit-racking');
+                    $rackingSelect.empty();
+
+                    if (availQty[newBatch]) {
+                        $.each(Object.keys(availQty[newBatch]), function(index, rack) {
+                            $rackingSelect.append(`<option value="${rack}">${rack}</option>`);
+                        });
+                    }
+                    $rackingSelect.trigger('change');
+                });
+
+                // Handle racking change
+                $row.find('.edit-racking').on('change', function() {
+                    const newBatch = $row.find('.edit-batch').val();
+                    const newRacking = $(this).val();
+                    const $shipmentSelect = $row.find('.edit-shipment');
+                    $shipmentSelect.empty();
+
+                    if (availQty[newBatch] && availQty[newBatch][newRacking]) {
+                        $.each(Object.keys(availQty[newBatch][newRacking]), function(index, ship) {
+                            const displayShip = ship || 'N/A';
+                            $shipmentSelect.append(`<option value="${ship}">${displayShip}</option>`);
+                        });
+                    }
+                    updateEditAvailableQuantity();
+                });
+
+                // Handle shipment change
+                $row.find('.edit-shipment').on('change', function() {
+                    updateEditAvailableQuantity();
+                });
+
+                // Handle quantity change to update total weight
+                $row.find('.edit-quantity').on('input', function() {
+                    const newQty = parseInt($(this).val()) || 0;
+                    const newTotalWeight = (weightPerItemValue * newQty).toFixed(2);
+                    $row.find('.edit-total-weight').text(newTotalWeight + ' kg');
+                });
+            }
+        });
+    });
+
+    // Save edited row
+    $(document).on('click', '.save_edit_btn', function () {
+        const $button = $(this);
+        const $row = $button.closest('tr');
+        const materialNumber = $button.data('material');
+        const weightPerItemValue = $button.data('weight-per-item');
+        const origWeight = parseFloat($button.data('orig-weight'));
+
+        const newBatch = $row.find('.edit-batch').val();
+        const newRacking = $row.find('.edit-racking').val();
+        const newShipment = $row.find('.edit-shipment').val();
+        const newQuantity = parseInt($row.find('.edit-quantity').val());
+        const productDescription = $row.find('td:eq(1)').text();
+
+        if (!newQuantity || newQuantity < 1) {
+            alert('Please enter a valid quantity.');
+            return;
+        }
+
+        // Get available quantity for validation
+        const availQty = $row.data('availQty');
+        let availableQuantity = 0;
+        if (availQty[newBatch] && availQty[newBatch][newRacking] && availQty[newBatch][newRacking][newShipment]) {
+            availableQuantity = availQty[newBatch][newRacking][newShipment];
+        }
+
+        // Check if quantity exceeds available
+        if (newQuantity > availableQuantity) {
+            alert(`Insufficient quantity available. Available: ${availableQuantity}, Requested: ${newQuantity}`);
+            return;
+        }
+
+        const newTotalWeight = (weightPerItemValue * newQuantity).toFixed(2);
+
+        // Update total weight
+        totalWeight = totalWeight - origWeight + parseFloat(newTotalWeight);
+
+        // Replace with normal row
+        $row.html(`
+            <td>${materialNumber}</td>
+            <td>${productDescription}</td>
+            <td>${newBatch}</td>
+            <td>${newShipment}</td>
+            <td>${newQuantity}</td>
+            <td>${weightPerItemValue.toFixed(2)} kg</td>
+            <td>${newTotalWeight} kg</td>
+            <td>${newRacking}</td>
+            <td>
+                <button class="btn btn-warning btn-sm edit_btn me-1" data-batch="${newBatch}" data-shipment="${newShipment}" data-quantity="${newQuantity}" data-weight="${newTotalWeight}" data-material="${materialNumber}" data-racking="${newRacking}" data-description="${productDescription}" data-weight-per-item="${weightPerItemValue}">Edit</button>
+                <button class="btn btn-danger btn-sm remove_btn" data-batch="${newBatch}" data-shipment="${newShipment}" data-quantity="${newQuantity}" data-weight="${newTotalWeight}" data-material="${materialNumber}" data-racking="${newRacking}">Remove</button>
+            </td>
+        `);
+
+        updateTotalWeightDisplay();
+    });
+
+    // Cancel editing
+    $(document).on('click', '.cancel_edit_btn', function () {
+        const $button = $(this);
+        const $row = $button.closest('tr');
+        const materialNumber = $button.data('material');
+        const batchNumber = $button.data('batch');
+        const shipmentNumber = $button.data('shipment');
+        const quantity = $button.data('quantity');
+        const rackingNumber = $button.data('racking');
+        const description = $button.data('description');
+        const weightPerItemValue = $button.data('weight-per-item');
+        const totalItemWeight = (weightPerItemValue * quantity).toFixed(2);
+
+        // Restore original row
+        $row.html(`
+            <td>${materialNumber}</td>
+            <td>${description}</td>
+            <td>${batchNumber}</td>
+            <td>${shipmentNumber}</td>
+            <td>${quantity}</td>
+            <td>${weightPerItemValue.toFixed(2)} kg</td>
+            <td>${totalItemWeight} kg</td>
+            <td>${rackingNumber}</td>
+            <td>
+                <button class="btn btn-warning btn-sm edit_btn me-1" data-batch="${batchNumber}" data-shipment="${shipmentNumber}" data-quantity="${quantity}" data-weight="${totalItemWeight}" data-material="${materialNumber}" data-racking="${rackingNumber}" data-description="${description}" data-weight-per-item="${weightPerItemValue}">Edit</button>
+                <button class="btn btn-danger btn-sm remove_btn" data-batch="${batchNumber}" data-shipment="${shipmentNumber}" data-quantity="${quantity}" data-weight="${totalItemWeight}" data-material="${materialNumber}" data-racking="${rackingNumber}">Remove</button>
+            </td>
+        `);
+    });
+
+    $('#submit_order_btn').on('click', function () {
+        const orderItems = [];
+        $('#preview_body tr').each(function () {
+            const row = $(this);
+            const materialNumber = row.find('td:eq(0)').text();
+            const batchNumber = row.find('td:eq(2)').text();
+            const shipmentNumber = row.find('td:eq(3)').text() || "N/A";
+            const quantity = row.find('td:eq(4)').text();
+            const rackingNumber = row.find('td:eq(7)').text();
+
+            orderItems.push({
+                material_number: materialNumber,
+                batch_number: batchNumber,
+                shipment_number: shipmentNumber === "N/A" ? null : shipmentNumber,
+                quantity: quantity,
+                racking_number: rackingNumber
+            });
+        });
+
+        const dnNumber = $('#dn_number').val();
+        const address = $('#address').val();
+        const salesOrder = $('#sales_order').val();
+        const customerName = $('#customer_name').val();
+        const remarks = $('#remarks').val();
+
+        if (!validateForm()) {
+            alert('Please fill in all required fields before submitting the order.');
+            return;
+        }
+
+        $.ajax({
+            url: '/create-order',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                sales_order: salesOrder,
+                address: address,
+                dn_number: dnNumber,
+                customer_name: customerName,
+                remarks: remarks,
+                items: orderItems,
+                total_weight: totalWeight
+            }),
+            success: function (response) {
+                const orderId = response.order_id;
+                showSuccessMessage(orderId);
+            },
+            error: function (xhr) {
+                showErrorMessage(xhr.responseText);
+            }
+        });
+    });
+
+    function showSuccessMessage(orderId) {
+        $('#orderModalBody').html(`Order created successfully! <a href="/order/${orderId}" class="alert-link">Click here to view the order.</a>`);
+        $('#orderModal').modal('show');
+        $('#view_order_btn').attr('href', `/order/${orderId}`).show();
+    }
+
+    function showErrorMessage(errorText) {
+        try {
+            const errorMessage = JSON.parse(errorText).error;
+            $('#orderModalBody').html(`Error creating order: ${errorMessage}`);
+        } catch (e) {
+            $('#orderModalBody').html(`Error creating order: ${errorText}`); // Fallback to the raw text
+        }
+        $('#orderModal').modal('show');
+    }
+
+    function validateForm() {
+        let isValid = true;
+
+        $('#sales_order, #dn_number, #customer_name, #address').each(function () {
+            if (!$(this).val()) {
+                $(this).addClass('is-invalid');
+                isValid = false;
+            } else {
+                $(this).removeClass('is-invalid');
+            }
+        });
+
+        return isValid;
+    }
+
+    function updateTotalWeightDisplay() {
+        $('#total_weight_display').text(`Total Weight: ${totalWeight.toFixed(2)} kg`);
+    }
+
+    function resetFormFields() {
+        $('#material_number').val('');
+        $('#batch_number').empty();
+        $('#racking_number').empty();
+        $('#shipment_number').empty();
+        $('#quantity').val('');
+        $('#available_quantity_display').remove();
+        $('#product_description').val('');
+        $('#material_number, #batch_number, #quantity, #racking_number').removeClass('is-invalid');
+
+    }// --- tiny debounce helper ---
+function debounce(fn, wait){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), wait); }; }
+
+// one function to fetch + populate form for a material number
+function fetchSkuInfo(materialNumber){
+  if(!materialNumber) return;
+
+  // prevent duplicate calls for same value
+  const $mn = $('#material_number');
+  if($mn.data('lastFetched') === materialNumber) return;
+  $mn.data('lastFetched', materialNumber);
+
+  // optional UI hint
+  $mn.addClass('is-loading');
+
+  $.ajax({
+    url: '/get-sku-info',
+    type: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ material_number: materialNumber }),
+    success: function (res) {
+      // Common fields
+      $('#product_description').val(res.product_description || '');
+      const weightPerItem = parseFloat(res.weight) || 0;
+      // if you’re using a weight variable elsewhere, set it here too
+      window.weightPerItem = weightPerItem;
+
+      // Clear & repopulate dropdowns
+      $('#batch_number').empty();
+      $('#racking_number').empty();
+      $('#shipment_number').empty();
+
+      // Batches - only show batches with available quantity > 0
+      const availQty = res.available_quantities || {};
+      (res.batch_numbers || []).forEach(b=>{
+        // Check if this batch has any available quantity
+        let hasQuantity = false;
+        if (availQty[b]) {
+          for (let rack in availQty[b]) {
+            for (let ship in availQty[b][rack]) {
+              if (availQty[b][rack][ship] > 0) {
+                hasQuantity = true;
+                break;
+              }
+            }
+            if (hasQuantity) break;
+          }
+        }
+
+        // Only add batch if it has quantity available
+        if (hasQuantity) {
+          $('#batch_number').append('<option value="'+b+'">'+b+'</option>');
+        }
+      });
+
+      // Store availability snapshot if you use it later
+      window.availableQuantities = res.available_quantities || {};
+
+      // Cascade to racking -> shipment
+      $('#batch_number').trigger('change');
+
+      // If you want to auto-fill Quantity with 1 by default (optional):
+      // $('#quantity').val(1).trigger('input');
+
+      // If you want to auto-focus Quantity next (optional):
+      // $('#quantity').focus();
+    },
+    error: function(){
+      // reset if not found
+      $('#product_description').val('');
+      $('#batch_number').empty();
+      $('#racking_number').empty();
+      $('#shipment_number').empty();
+      window.availableQuantities = {};
+    },
+    complete: function(){
+      $('#material_number').removeClass('is-loading');
+      // Recompute available badge if you show it
+      if (typeof updateAvailableQuantity === 'function') {
+        setTimeout(updateAvailableQuantity, 30);
+      }
+    }
+  });
+}
+
+// bind debounced input, paste, and Enter key
+(function bindMaterialNumberAutoFetch(){
+  const $mn = $('#material_number');
+
+  // Fire when typing stops for 300ms
+  const debounced = debounce(function(){
+    const val = ($mn.val() || '').trim();
+    if (val) fetchSkuInfo(val);
+  }, 300);
+
+  // Input covers typing, paste via keyboard, etc.
+  $mn.on('input', debounced);
+
+  // Explicit paste handler (some browsers delay input event on paste)
+  $mn.on('paste', function(){ setTimeout(debounced, 0); });
+
+  // Enter key triggers immediately
+  $mn.on('keydown', function(e){
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = ($mn.val() || '').trim();
+      if (val) fetchSkuInfo(val);
+    }
+  });
+
+  // As a fallback, also fetch on blur (if user still clicks away)
+  $mn.on('blur', function(){
+    const val = ($mn.val() || '').trim();
+    if (val) fetchSkuInfo(val);
+  });
+
+  // Optional: if you pre-fill the field on page load, auto-fetch once
+  const initial = ($mn.val() || '').trim();
+  if (initial) fetchSkuInfo(initial);
+})();
+});
+
+        let autocompleteResults = [];
+let selectedIndex = -1;
+
+// Debounce helper
+function debounce(fn, wait) {
+    let t;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
+    };
+}
+
+// Search SKU by material number or product description
+function searchSku(searchTerm) {
+    if (!searchTerm || searchTerm.length < 2) {
+        $('#autocomplete_results').removeClass('show').empty();
+        return;
+    }
+
+    $('#material_number').addClass('is-loading');
+
+    $.ajax({
+        url: '/search-sku',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ search_term: searchTerm }),
+        success: function (response) {
+            autocompleteResults = response.results || [];
+            displayAutocompleteResults();
+        },
+        error: function () {
+            $('#autocomplete_results').removeClass('show').empty();
+        },
+        complete: function () {
+            $('#material_number').removeClass('is-loading');
+        }
+    });
+}
+
+// Display autocomplete dropdown
+function displayAutocompleteResults() {
+    const $results = $('#autocomplete_results');
+    $results.empty();
+
+    if (autocompleteResults.length === 0) {
+        $results.html('<div class="no-results">No results found</div>');
+        $results.addClass('show');
+        return;
+    }
+
+    autocompleteResults.forEach((item, index) => {
+        const $item = $(`
+            <div class="autocomplete-item" data-index="${index}">
+                <div class="material-number">${item.material_number}</div>
+                <div class="product-desc">${item.product_description}</div>
+            </div>
+        `);
+        $results.append($item);
+    });
+
+    $results.addClass('show');
+    selectedIndex = -1;
+}
+
+// Select an autocomplete item
+function selectAutocompleteItem(index) {
+    if (index >= 0 && index < autocompleteResults.length) {
+        const selected = autocompleteResults[index];
+        $('#material_number').val(selected.material_number);
+        $('#autocomplete_results').removeClass('show').empty();
+        fetchSkuInfo(selected.material_number);
+    }
+}
+
+// Fetch SKU info (updated version)
+function fetchSkuInfo(materialNumber) {
+    if (!materialNumber) return;
+
+    const $mn = $('#material_number');
+    if ($mn.data('lastFetched') === materialNumber) return;
+    $mn.data('lastFetched', materialNumber);
+
+    $mn.addClass('is-loading');
+
+    $.ajax({
+        url: '/get-sku-info',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ material_number: materialNumber }),
+        success: function (res) {
+            // Update material number field (in case search was by description)
+            if (res.material_number) {
+                $('#material_number').val(res.material_number);
+            }
+
+            $('#product_description').val(res.product_description || '');
+            const weightPerItem = parseFloat(res.weight) || 0;
+            window.weightPerItem = weightPerItem;
+
+            // Clear & repopulate dropdowns
+            $('#batch_number').empty();
+            $('#racking_number').empty();
+            $('#shipment_number').empty();
+
+            // Batches - only show batches with available quantity > 0
+            const availQty = res.available_quantities || {};
+            (res.batch_numbers || []).forEach(b => {
+                let hasQuantity = false;
+                if (availQty[b]) {
+                    for (let rack in availQty[b]) {
+                        for (let ship in availQty[b][rack]) {
+                            if (availQty[b][rack][ship] > 0) {
+                                hasQuantity = true;
+                                break;
+                            }
+                        }
+                        if (hasQuantity) break;
+                    }
+                }
+
+                if (hasQuantity) {
+                    $('#batch_number').append('<option value="' + b + '">' + b + '</option>');
+                }
+            });
+
+            window.availableQuantities = res.available_quantities || {};
+            $('#batch_number').trigger('change');
+        },
+        error: function () {
+            $('#product_description').val('');
+            $('#batch_number').empty();
+            $('#racking_number').empty();
+            $('#shipment_number').empty();
+            window.availableQuantities = {};
+        },
+        complete: function () {
+            $('#material_number').removeClass('is-loading');
+            if (typeof updateAvailableQuantity === 'function') {
+                setTimeout(updateAvailableQuantity, 30);
+            }
+        }
+    });
+}
+
+// Bind autocomplete events
+(function bindAutocomplete() {
+    const $mn = $('#material_number');
+    const $results = $('#autocomplete_results');
+
+    // Debounced search
+    const debouncedSearch = debounce(function () {
+        const val = ($mn.val() || '').trim();
+        searchSku(val);
+    }, 300);
+
+    // Input event (typing)
+    $mn.on('input', debouncedSearch);
+
+    // Paste event
+    $mn.on('paste', function () {
+        setTimeout(debouncedSearch, 0);
+    });
+
+    // Keyboard navigation
+    $mn.on('keydown', function (e) {
+        const $items = $('.autocomplete-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, $items.length - 1);
+            $items.removeClass('active').eq(selectedIndex).addClass('active');
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+            $items.removeClass('active').eq(selectedIndex).addClass('active');
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex >= 0) {
+                selectAutocompleteItem(selectedIndex);
+            } else {
+                const val = ($mn.val() || '').trim();
+                if (val) fetchSkuInfo(val);
+            }
+        } else if (e.key === 'Escape') {
+            $results.removeClass('show').empty();
+        }
+    });
+
+    // Click on autocomplete item
+    $(document).on('click', '.autocomplete-item', function () {
+        const index = parseInt($(this).data('index'));
+        selectAutocompleteItem(index);
+    });
+
+    // Close autocomplete when clicking outside
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('#material_number, #autocomplete_results').length) {
+            $results.removeClass('show').empty();
+        }
+    });
+
+    // Blur event (fallback)
+    $mn.on('blur', function () {
+        setTimeout(function () {
+            if (!$(':focus').closest('#autocomplete_results').length) {
+                $results.removeClass('show');
+            }
+        }, 200);
+    });
+})();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

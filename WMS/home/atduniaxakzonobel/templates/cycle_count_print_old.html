@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cycle Count - Print View</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #fff;
+            color: #212529;
+        }
+
+        .print-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
+
+        .print-header h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .print-info {
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .count-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .count-table th,
+        .count-table td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+
+        .count-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .count-column {
+            width: 80px;
+            background-color: #f9f9f9;
+        }
+
+        /* Print styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                margin: 0;
+                padding: 10px;
+            }
+
+            .count-table {
+                page-break-inside: auto;
+                font-size: 0.75rem;
+            }
+
+            .count-table tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            .count-table th,
+            .count-table td {
+                padding: 4px;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            @page {
+                size: landscape;
+                margin: 0.5cm;
+            }
+        }
+
+        /* Screen-only styles */
+        @media screen {
+            .container {
+                max-width: 1200px;
+                margin: 20px auto;
+                padding: 20px;
+            }
+
+            .btn-group {
+                margin-bottom: 20px;
+            }
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .autocomplete-results.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .autocomplete-item .item-title {
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .autocomplete-item:hover .item-title,
+        .autocomplete-item.active .item-title {
+            color: white;
+        }
+
+        .autocomplete-item .item-subtitle {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .autocomplete-item:hover .item-subtitle,
+        .autocomplete-item.active .item-subtitle {
+            color: #f0f0f0;
+        }
+
+        .no-results {
+            padding: 10px 12px;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Loading indicator */
+        .search-input.is-loading {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="none" stroke="%23007bff" stroke-width="4"><animate attributeName="stroke-dasharray" dur="1.5s" repeatCount="indefinite" values="1,200;100,200;100,200"/><animate attributeName="stroke-dashoffset" dur="1.5s" repeatCount="indefinite" values="0;-15;-125"/></circle></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 20px 20px;
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #999;
+            font-size: 1.2rem;
+            display: none;
+        }
+
+        .clear-search.show {
+            display: block;
+        }
+
+        .clear-search:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Screen-only buttons and filters -->
+        <div class="no-print">
+            <!-- Filter Form -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">🔍 Cycle Count Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="/cycle-count" id="filter-form" class="row g-3">
+                    <!-- Racking Filter with Search -->
+                    <div class="col-md-3">
+                        <label for="racking_search" class="form-label"><strong>Racking Number:</strong></label>
+                        <div class="search-container">
+                            <input type="text" 
+                                id="racking_search" 
+                                class="form-control search-input" 
+                                placeholder="Search racking..." 
+                                value="{% if selected_racking != 'all' %}{{ selected_racking }}{% endif %}"
+                                autocomplete="off">
+                            <input type="hidden" name="racking_number" id="racking_number" value="{{ selected_racking }}">
+                            <div id="racking_autocomplete" class="autocomplete-results"></div>
+                            <span class="clear-search" id="clear-racking">×</span>
+                        </div>
+                    </div>
+        
+                    <!-- SKU Filter with Search (NEW) -->
+                    <div class="col-md-4">
+                        <label for="sku_search" class="form-label"><strong>SKU / Material:</strong></label>
+                        <div class="search-container">
+                            <input type="text" 
+                                id="sku_search" 
+                                class="form-control search-input" 
+                                placeholder="Search by material number or description..." 
+                                value="{% if selected_sku != 'all' %}{{ selected_sku }}{% endif %}"
+                                autocomplete="off">
+                            <input type="hidden" name="material_number" id="material_number" value="{{ selected_sku }}">
+                            <div id="sku_autocomplete" class="autocomplete-results"></div>
+                            <span class="clear-search" id="clear-sku">×</span>
+                        </div>
+                    </div>
+        
+                    <!-- Zero Stock Toggle -->
+                    <div class="col-md-3">
+                        <label for="include_zero" class="form-label"><strong>Zero Stock Items:</strong></label>
+                        <select name="include_zero" id="include_zero" class="form-select">
+                            <option value="yes" {% if include_zero == 'yes' %}selected{% endif %}>Include</option>
+                            <option value="no" {% if include_zero == 'no' %}selected{% endif %}>Exclude</option>
+                        </select>
+                    </div>
+        
+                    <!-- Apply Button -->
+                    <div class="col-md-2">
+                        <label class="form-label d-block">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">📊 Apply Filters</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Current Filter Display -->
+        <div class="alert alert-info mb-3">
+            <strong>📋 Current Filters:</strong><br>
+            <strong>Racking:</strong> {% if selected_racking == 'all' %}All Racking{% else %}{{ selected_racking }}{% endif %} | 
+            <strong>SKU:</strong> {% if selected_sku == 'all' %}All SKUs{% else %}{{ selected_sku }}{% endif %} | 
+            <strong>Zero Stock:</strong> {% if include_zero == 'yes' %}Included{% else %}Excluded{% endif %}
+        </div>
+
+            <!-- Action Buttons -->
+            <div class="btn-group mb-3 w-100">
+                <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+                <a href="/cycle-count/perform?include_zero={{ include_zero }}&racking_number={{ selected_racking }}&material_number={{ selected_sku }}" class="btn btn-primary">📝 Enter Count Data</a>
+                <button onclick="window.print()" class="btn btn-success">🖨️ Print</button>
+            </div>
+        </div>
+
+        <!-- Print header -->
+        <div class="print-header">
+            <h1>CYCLE COUNT SHEET</h1>
+            <div class="print-info">
+                <strong>Date:</strong> {{ count_date }}<br>
+                <strong>Racking:</strong> {% if selected_racking == 'all' %}All Racking{% else %}{{ selected_racking }}{% endif %}<br>
+                <strong>SKU:</strong> {% if selected_sku == 'all' %}All SKUs{% else %}{{ selected_sku }}{% endif %}<br>
+                <strong>Total Stock Lines:</strong> {{ total_stock_lines }}<br>
+                <strong>Zero Stock Items:</strong> {% if include_zero == 'yes' %}Included{% else %}Excluded{% endif %}
+            </div>
+        </div>
+
+        <!-- Count table -->
+        <table class="count-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="width: 130px;">Material Number</th>
+                    <th>Product Description</th>
+                    <th style="width: 110px;">Batch Number</th>
+                    <th style="width: 110px;">Racking Number</th>
+                    <th style="width: 90px;">System Qty</th>
+                    <th class="count-column">Counted Qty</th>
+                    <th class="count-column">Difference</th>
+                    <th style="width: 120px;">Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set counter = namespace(value=0) %}
+                {% for material_number, stocks in sku_stocks.items() %}
+                    {% for stock in stocks %}
+                        {% set counter.value = counter.value + 1 %}
+                        <tr>
+                            <td>{{ counter.value }}</td>
+                            <td>{{ material_number }}</td>
+                            <td>{{ stock.product_description }}</td>
+                            <td>{{ stock.batch_number or 'N/A' }}</td>
+                            <td>{{ stock.racking_number or 'N/A' }}</td>
+                            <td>{{ stock.quantity }}</td>
+                            <td class="count-column"></td>
+                            <td class="count-column"></td>
+                            <td></td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">No stock items found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Footer for signature -->
+        <div class="print-footer" style="margin-top: 50px; border-top: 1px solid #ccc; padding-top: 20px;">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Counted By:</strong><br><br>
+                    Name: ____________________<br><br>
+                    Signature: ____________________<br><br>
+                    Date: ____________________
+                </div>
+                <div class="col-md-4">
+                    <strong>Verified By:</strong><br><br>
+                    Name: ____________________<br><br>
+                    Signature: ____________________<br><br>
+                    Date: ____________________
+                </div>
+                <div class="col-md-4">
+                    <strong>Approved By:</strong><br><br>
+                    Name: ____________________<br><br>
+                    Signature: ____________________<br><br>
+                    Date: ____________________
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ============ AUTOCOMPLETE FOR CYCLE COUNT FILTERS ============
+
+// Debounce helper
+function debounce(fn, wait) {
+    let t;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
+    };
+}
+
+// ============ SKU SEARCH ============
+let skuResults = [];
+let skuSelectedIndex = -1;
+
+function searchSku(searchTerm) {
+    if (!searchTerm || searchTerm.length < 2) {
+        document.getElementById('sku_autocomplete').classList.remove('show');
+        document.getElementById('sku_autocomplete').innerHTML = '';
+        return;
+    }
+
+    document.getElementById('sku_search').classList.add('is-loading');
+
+    fetch('/search-sku-cycle-count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ search_term: searchTerm })
+    })
+    .then(r => r.json())
+    .then(data => {
+        skuResults = data.results || [];
+        displaySkuResults();
+    })
+    .catch(err => {
+        console.error('SKU search error:', err);
+        document.getElementById('sku_autocomplete').classList.remove('show');
+    })
+    .finally(() => {
+        document.getElementById('sku_search').classList.remove('is-loading');
+    });
+}
+
+function displaySkuResults() {
+    const container = document.getElementById('sku_autocomplete');
+    container.innerHTML = '';
+
+    if (skuResults.length === 0) {
+        container.innerHTML = '<div class="no-results">No SKUs found</div>';
+        container.classList.add('show');
+        return;
+    }
+
+    skuResults.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.dataset.index = index;
+        div.innerHTML = `
+            <div class="item-title">${item.material_number}</div>
+            <div class="item-subtitle">${item.product_description}</div>
+        `;
+        container.appendChild(div);
+    });
+
+    container.classList.add('show');
+    skuSelectedIndex = -1;
+}
+
+function selectSku(index) {
+    if (index >= 0 && index < skuResults.length) {
+        const selected = skuResults[index];
+        document.getElementById('sku_search').value = selected.material_number;
+        document.getElementById('material_number').value = selected.material_number;
+        document.getElementById('sku_autocomplete').classList.remove('show');
+        document.getElementById('clear-sku').classList.add('show');
+    }
+}
+
+// ============ RACKING SEARCH ============
+let rackingResults = [];
+let rackingSelectedIndex = -1;
+
+function searchRacking(searchTerm) {
+    if (!searchTerm || searchTerm.length < 1) {
+        document.getElementById('racking_autocomplete').classList.remove('show');
+        document.getElementById('racking_autocomplete').innerHTML = '';
+        return;
+    }
+
+    document.getElementById('racking_search').classList.add('is-loading');
+
+    fetch('/search-racking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ search_term: searchTerm })
+    })
+    .then(r => r.json())
+    .then(data => {
+        rackingResults = data.results || [];
+        displayRackingResults();
+    })
+    .catch(err => {
+        console.error('Racking search error:', err);
+        document.getElementById('racking_autocomplete').classList.remove('show');
+    })
+    .finally(() => {
+        document.getElementById('racking_search').classList.remove('is-loading');
+    });
+}
+
+function displayRackingResults() {
+    const container = document.getElementById('racking_autocomplete');
+    container.innerHTML = '';
+
+    if (rackingResults.length === 0) {
+        container.innerHTML = '<div class="no-results">No racking found</div>';
+        container.classList.add('show');
+        return;
+    }
+
+    rackingResults.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.dataset.index = index;
+        div.innerHTML = `
+            <div class="item-title">${item.racking_number}</div>
+            ${item.aisle ? `<div class="item-subtitle">Aisle: ${item.aisle}</div>` : ''}
+        `;
+        container.appendChild(div);
+    });
+
+    container.classList.add('show');
+    rackingSelectedIndex = -1;
+}
+
+function selectRacking(index) {
+    if (index >= 0 && index < rackingResults.length) {
+        const selected = rackingResults[index];
+        document.getElementById('racking_search').value = selected.racking_number;
+        document.getElementById('racking_number').value = selected.racking_number;
+        document.getElementById('racking_autocomplete').classList.remove('show');
+        document.getElementById('clear-racking').classList.add('show');
+    }
+}
+
+// ============ EVENT BINDINGS ============
+
+// SKU Search Events
+const skuSearch = document.getElementById('sku_search');
+const debouncedSkuSearch = debounce((val) => searchSku(val), 300);
+
+skuSearch.addEventListener('input', function() {
+    const val = this.value.trim();
+    debouncedSkuSearch(val);
+    
+    if (val) {
+        document.getElementById('clear-sku').classList.add('show');
+    } else {
+        document.getElementById('clear-sku').classList.remove('show');
+        document.getElementById('material_number').value = 'all';
+    }
+});
+
+skuSearch.addEventListener('keydown', function(e) {
+    const items = document.querySelectorAll('#sku_autocomplete .autocomplete-item');
+    
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        skuSelectedIndex = Math.min(skuSelectedIndex + 1, items.length - 1);
+        items.forEach((item, i) => {
+            item.classList.toggle('active', i === skuSelectedIndex);
+        });
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        skuSelectedIndex = Math.max(skuSelectedIndex - 1, 0);
+        items.forEach((item, i) => {
+            item.classList.toggle('active', i === skuSelectedIndex);
+        });
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (skuSelectedIndex >= 0) {
+            selectSku(skuSelectedIndex);
+        }
+    } else if (e.key === 'Escape') {
+        document.getElementById('sku_autocomplete').classList.remove('show');
+    }
+});
+
+// Racking Search Events
+const rackingSearch = document.getElementById('racking_search');
+const debouncedRackingSearch = debounce((val) => searchRacking(val), 300);
+
+rackingSearch.addEventListener('input', function() {
+    const val = this.value.trim();
+    debouncedRackingSearch(val);
+    
+    if (val) {
+        document.getElementById('clear-racking').classList.add('show');
+    } else {
+        document.getElementById('clear-racking').classList.remove('show');
+        document.getElementById('racking_number').value = 'all';
+    }
+});
+
+rackingSearch.addEventListener('keydown', function(e) {
+    const items = document.querySelectorAll('#racking_autocomplete .autocomplete-item');
+    
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        rackingSelectedIndex = Math.min(rackingSelectedIndex + 1, items.length - 1);
+        items.forEach((item, i) => {
+            item.classList.toggle('active', i === rackingSelectedIndex);
+        });
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        rackingSelectedIndex = Math.max(rackingSelectedIndex - 1, 0);
+        items.forEach((item, i) => {
+            item.classList.toggle('active', i === rackingSelectedIndex);
+        });
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (rackingSelectedIndex >= 0) {
+            selectRacking(rackingSelectedIndex);
+        }
+    } else if (e.key === 'Escape') {
+        document.getElementById('racking_autocomplete').classList.remove('show');
+    }
+});
+
+// Click on autocomplete items
+document.addEventListener('click', function(e) {
+    // SKU autocomplete click
+    const skuItem = e.target.closest('#sku_autocomplete .autocomplete-item');
+    if (skuItem) {
+        const index = parseInt(skuItem.dataset.index);
+        selectSku(index);
+    }
+    
+    // Racking autocomplete click
+    const rackingItem = e.target.closest('#racking_autocomplete .autocomplete-item');
+    if (rackingItem) {
+        const index = parseInt(rackingItem.dataset.index);
+        selectRacking(index);
+    }
+    
+    // Click outside - close dropdowns
+    if (!e.target.closest('#sku_search') && !e.target.closest('#sku_autocomplete')) {
+        document.getElementById('sku_autocomplete').classList.remove('show');
+    }
+    if (!e.target.closest('#racking_search') && !e.target.closest('#racking_autocomplete')) {
+        document.getElementById('racking_autocomplete').classList.remove('show');
+    }
+});
+
+// Clear buttons
+document.getElementById('clear-sku').addEventListener('click', function() {
+    document.getElementById('sku_search').value = '';
+    document.getElementById('material_number').value = 'all';
+    document.getElementById('sku_autocomplete').classList.remove('show');
+    this.classList.remove('show');
+    document.getElementById('sku_search').focus();
+});
+
+document.getElementById('clear-racking').addEventListener('click', function() {
+    document.getElementById('racking_search').value = '';
+    document.getElementById('racking_number').value = 'all';
+    document.getElementById('racking_autocomplete').classList.remove('show');
+    this.classList.remove('show');
+    document.getElementById('racking_search').focus();
+});
+
+// Show clear buttons on page load if values exist
+if (document.getElementById('sku_search').value) {
+    document.getElementById('clear-sku').classList.add('show');
+}
+if (document.getElementById('racking_search').value) {
+    document.getElementById('clear-racking').classList.add('show');
+}
+</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

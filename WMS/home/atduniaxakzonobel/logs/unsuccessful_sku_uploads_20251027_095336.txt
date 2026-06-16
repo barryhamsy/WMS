@@ -1,0 +1,56 @@
+Unsuccessful SKU Uploads Log
+=============================
+Material Number: 5303693, Product Description: INTERSWIFT 6600 BMA664/20L/XA - Error: Pack size not found
+Material Number: 5303700, Product Description: INTERSWIFT 6800HS BMA684/20L/XA - Error: Pack size not found
+Material Number: 5303710, Product Description: INTERSPEED 6200 BQA624/20L/XA - Error: Pack size not found
+Material Number: 5303977, Product Description: INTERPRIME 198 CPA099/20L/XA - Error: Pack size not found
+Material Number: 5304411, Product Description: INTERGARD 740 ECA914/1L/XA - Error: Pack size not found
+Material Number: 5304724, Product Description: INTERGARD 269 EGA088/20L/XA - Error: Pack size not found
+Material Number: 5304728, Product Description: INTERGARD 269/276 EGA089/1L/XA - Error: Pack size not found
+Material Number: 5304742, Product Description: INTERSEAL 670HS EGA230/20L/XA - Error: Pack size not found
+Material Number: 5304746, Product Description: INTERSEAL 670HS EGA236/20L/XA - Error: Pack size not found
+Material Number: 5305436, Product Description: INTERSHIELD 300 ENA300/20L/XA - Error: Pack size not found
+Material Number: 5305440, Product Description: INTERSHIELD 300 ENA301/20L/XA - Error: Pack size not found
+Material Number: 5305867, Product Description: INTERGARD 263/162 FAA262/1.3L/XA - Error: Pack size not found
+Material Number: 5305869, Product Description: INTERGARD 263 FAJ034/20L/XA - Error: Pack size not found
+Material Number: 5307139, Product Description: INTERBOND 201 KDA100/1.3L/XA - Error: Pack size not found
+Material Number: 5307147, Product Description: INTERBOND 201 KDK724/20L/XA - Error: Pack size not found
+Material Number: 5307198, Product Description: INTERTUF 262 KHA062/1.3L/XA - Error: Pack size not found
+Material Number: 5307204, Product Description: INTERTUF 262 KHA303/20L/XA - Error: Pack size not found
+Material Number: 5307208, Product Description: INTERTUF 262 KHA304/20L/XA - Error: Pack size not found
+Material Number: 5307319, Product Description: INTERCEPT 7000 LPA717/20L/XA - Error: Pack size not found
+Material Number: 5309117, Product Description: INTERTHANE 990 PHA046/1L/XA - Error: Pack size not found
+Material Number: 5309159, Product Description: INTERTHANE 990 PHB000/20L/XA - Error: Pack size not found
+Material Number: 5309187, Product Description: INTERTHANE 990 PHB117/20L/XA - Error: Pack size not found
+Material Number: 5311098, Product Description: INTERLINE 704 THA702/20L/XA - Error: Pack size not found
+Material Number: 5311110, Product Description: INTERLINE 704 THA703/1.3L/XA - Error: Pack size not found
+Material Number: 5311124, Product Description: INTERLINE 984 THA984/20L/XA - Error: Pack size not found
+Material Number: 5311133, Product Description: INTERLINE 399 TLA393/20L/XA - Error: Pack size not found
+Material Number: 5311150, Product Description: INTERLINE 982 TPA282/20L/XA - Error: Pack size not found
+Material Number: 5347289, Product Description: INTERBOND 1202UPC HTA160 HTA160/20L/RI - Error: Pack size not found
+Material Number: 5519147, Product Description: INTERBOND 1202UPC HTA166/1L/RI - Error: Pack size not found
+Material Number: 5575557, Product Description: INTERTHANE 990 PHA140/20L/XA - Error: Pack size not found
+Material Number: 5575558, Product Description: INTERTHANE 990 PHA100/20L/XA - Error: Pack size not found
+Material Number: 5575563, Product Description: INTERTHANE 990 PHA130/20L/XA - Error: Pack size not found
+Material Number: 5586825, Product Description: INTERSMOOTH 7670 SPC BEA967/20L/XA - Error: Pack size not found
+Material Number: 5587421, Product Description: INTERSMOOTH 7670 SPC BEA964/20L/XA - Error: Pack size not found
+Material Number: 5622760, Product Description: INTERBOND 2340UPC HTA341/20L/XA - Error: Pack size not found
+Material Number: 5622764, Product Description: INTERSMOOTH 7670 SPC BEA969/20L/XA - Error: Pack size not found
+Material Number: 5622769, Product Description: INTERSLEEK 731 BXA730/10L/XA - Error: Pack size not found
+Material Number: 5622816, Product Description: INTERSLEEK 1100SR FXA993/3L/XA - Error: Pack size not found
+Material Number: 5622817, Product Description: INTERSLEEK 1100SR FXA994/1L/XA - Error: Pack size not found
+Material Number: 5622819, Product Description: INTERSLEEK 1100SR FXA997/10L/XA - Error: Pack size not found
+Material Number: 5622955, Product Description: INTERLINE 994 TCA993/20L/XA - Error: Pack size not found
+Material Number: 5622956, Product Description: INTERLINE 994 TCA994/20L/XA - Error: Pack size not found
+Material Number: 5622960, Product Description: INTERLINE 984 THA987/10L/XA - Error: Pack size not found
+Material Number: 5623048, Product Description: INTERBOND 2340UPC HTA346/1.3L/XA - Error: Pack size not found
+Material Number: 5623084, Product Description: INTERSHIELD 300 ENA303/3L/1.43/XA - Error: Pack size not found
+Material Number: 5623157, Product Description: INTERTHANE 987 PLA046/1L/XA - Error: Pack size not found
+Material Number: 5623165, Product Description: INTERSEAL 670HS EGA231/20L/XA - Error: Pack size not found
+Material Number: 5680535, Product Description: INTERBOND 2340UPC HTA340/20L/XA - Error: Pack size not found
+Material Number: 5694888, Product Description: INTERLINE 984 THA982/10L/XA - Error: Pack size not found
+Material Number: 5701098, Product Description: INTERSEAL 670HS EGA247/3L/MJ - Error: Pack size not found
+Material Number: 5701099, Product Description: INTERSEAL 670HS EGA247/1L/MJ - Error: Pack size not found
+Material Number: 5714811, Product Description: INTERNATIONAL THINNER GTA220/20L/MJ - Error: Pack size not found
+Material Number: 5811766, Product Description: INTERZINC 2280 QHA080/10L/7.1/XA - Error: Pack size not found
+Material Number: 5822485, Product Description: INTERZINC 22 PART B QHA027/10L/2.0/RP - Error: Pack size not found

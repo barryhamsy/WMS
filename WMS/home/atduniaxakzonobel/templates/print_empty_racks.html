@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Empty Rack List</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #C7C7C7; color: #212529; }
+
+        .navbar { background-color: #343a40; padding: 15px; }
+        .navbar-brand { font-weight: bold; color: #fff; font-size: 1.5rem; }
+        .nav-link { color: #adb5bd; font-weight: 500; }
+        .nav-link:hover { color: #fff; }
+
+        .btn-primary, .btn-success, .btn-secondary {
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover, .btn-success:hover, .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
+        }
+
+        h1 { font-size: 3rem; font-weight: bold; }
+        h2 { font-size: 2rem; font-weight: bold; }
+
+        .aisle-card {
+            background: white;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+        }
+
+        .aisle-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #fff;
+            background: #343a40;
+            padding: 5px 12px;
+            border-radius: 5px 5px 0 0;
+            margin: -14px -18px 12px -18px;
+        }
+
+        .aisle-title .count {
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .rack-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+
+        .rack-chip {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 4px 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        /* Print styles */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            @page { margin: 15mm; size: A4; }
+
+            .aisle-card {
+                page-break-inside: avoid;
+                margin-bottom: 10px;
+                box-shadow: none;
+                border: 1px solid #dee2e6;
+            }
+
+            .doc-footer {
+                border-top: 1px solid #ccc;
+                margin-top: 20px;
+                padding-top: 8px;
+                font-size: 8pt;
+                color: #888;
+                display: flex;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar (hidden on print) -->
+<nav class="navbar navbar-expand-lg navbar-dark no-print">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+                <li class="nav-item"><a class="nav-link" href="/cycle-count">Cycle Count</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Container -->
+<div class="container mt-5">
+    <h1 class="text-center">Empty Rack List</h1>
+
+    <!-- Action buttons (hidden on print) -->
+    <div class="text-left mb-4 mt-4 no-print">
+        <a href="{{ url_for('rack_status') }}" class="btn btn-secondary d-inline-block">← Rack Status</a>
+        <button onclick="window.print()" class="btn btn-success d-inline-block ms-2">🖨️ Print</button>
+    </div>
+
+    <!-- Doc header (print only) -->
+    <div style="display:none;" class="d-print-flex justify-content-between align-items-start border-bottom pb-2 mb-3">
+        <div>
+            <strong style="font-size:8pt;">Empty Rack List</strong><br>
+            <small>A.T. Dunia Logistics — WMS</small>
+        </div>
+        <div style="text-align:right; font-size:8.5pt; color:#555;">
+            Generated: {{ generated_at }}<br>
+            By: {{ current_user.username }}
+        </div>
+    </div>
+
+    <!-- Empty racks by aisle -->
+    {% for aisle, racks in empty_by_aisle.items() %}
+    <div class="aisle-card">
+        <div class="aisle-title">
+            Aisle {{ aisle }}
+            <span class="count">{{ racks|length }} empty</span>
+        </div>
+        <div class="rack-grid">
+            {% for rack in racks %}
+            <span class="rack-chip">{{ rack }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Footer -->
+    <div class="doc-footer d-none d-print-flex">
+        <span>WMS — Empty Rack Report</span>
+        <span>{{ generated_at }}</span>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mass Transfer Rack - Inventory System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            background-color: #C7C7C7;
+            color: #212529;
+        }
+        
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+        
+        .nav-link {
+            color: #adb5bd;
+            font-weight: 500;
+        }
+        
+        .nav-link:hover {
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1400px;
+            padding-top: 40px;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .table-responsive {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .table th {
+            background-color: #343a40;
+            color: white;
+        }
+        
+        #previewSection {
+            display: none;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/transfer-stock">Transfer Stock</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Container -->
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>📦 Mass Transfer Rack</h1>
+        <a href="/stocks" class="btn btn-secondary">← Back to Stock List</a>
+    </div>
+    
+    <!-- Alert Messages -->
+    <div id="alertContainer"></div>
+    
+    <!-- Selection Card -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Select Racks for Mass Transfer</h4>
+            <p class="text-muted">Transfer ALL items from one rack to another rack</p>
+            
+            <div class="row">
+                <div class="col-md-5">
+                    <label for="sourceRack" class="form-label"><strong>Source Rack (From):</strong></label>
+                    <select id="sourceRack" class="form-select">
+                        <option value="">-- Select Source Rack --</option>
+                        {% for rack in racking_list %}
+                        <option value="{{ rack }}">{{ rack }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-2 text-center mt-4">
+                    <h2>→</h2>
+                </div>
+                
+                <div class="col-md-5">
+                    <label for="destRack" class="form-label"><strong>Destination Rack (To):</strong></label>
+                    <select id="destRack" class="form-select">
+                        <option value="">-- Select Destination Rack --</option>
+                        {% for rack in racking_list %}
+                        <option value="{{ rack }}">{{ rack }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button id="previewBtn" class="btn btn-primary btn-lg">Preview Transfer</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Preview Section -->
+    <div id="previewSection">
+        <!-- Summary Card -->
+        <div class="summary-card">
+            <h4>Transfer Summary</h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <h5><strong>From:</strong> <span id="summarySource"></span></h5>
+                </div>
+                <div class="col-md-4">
+                    <h5><strong>To:</strong> <span id="summaryDest"></span></h5>
+                </div>
+                <div class="col-md-4">
+                    <h5><strong>Total Items:</strong> <span id="summaryCount"></span></h5>
+                    <h5><strong>Total Quantity:</strong> <span id="summaryQty"></span></h5>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Items Table -->
+        <div class="table-responsive">
+            <h4 class="mb-3">Items to Transfer</h4>
+            <table class="table table-striped" id="itemsTable">
+                <thead>
+                    <tr>
+                        <th>Material Number</th>
+                        <th>Product Description</th>
+                        <th>Batch Number</th>
+                        <th>Shipment Number</th>
+                        <th>Quantity</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsTableBody">
+                    <!-- Items will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Execute Button -->
+        <div class="mt-4 mb-5">
+            <button id="executeBtn" class="btn btn-success btn-lg me-2">
+                ✓ Execute Mass Transfer
+            </button>
+            <button id="cancelBtn" class="btn btn-secondary btn-lg">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    let currentItems = [];
+    
+    // Preview Transfer
+    $('#previewBtn').click(function() {
+        const sourceRack = $('#sourceRack').val();
+        const destRack = $('#destRack').val();
+        
+        // Validation
+        if (!sourceRack) {
+            showAlert('Please select a source rack', 'warning');
+            return;
+        }
+        
+        if (!destRack) {
+            showAlert('Please select a destination rack', 'warning');
+            return;
+        }
+        
+        if (sourceRack === destRack) {
+            showAlert('Source and destination racks cannot be the same', 'danger');
+            return;
+        }
+        
+        // Get rack contents
+        $.ajax({
+            url: `/get-rack-contents/${sourceRack}`,
+            type: 'GET',
+            success: function(response) {
+                currentItems = response.items;
+                displayPreview(sourceRack, destRack, response);
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Error loading rack contents';
+                showAlert(error, 'danger');
+            }
+        });
+    });
+    
+    // Display Preview
+    function displayPreview(source, dest, data) {
+        $('#summarySource').text(source);
+        $('#summaryDest').text(dest);
+        $('#summaryCount').text(data.item_count);
+        $('#summaryQty').text(data.total_quantity);
+        
+        // Populate table
+        const tbody = $('#itemsTableBody');
+        tbody.empty();
+        
+        data.items.forEach(item => {
+            tbody.append(`
+                <tr>
+                    <td>${item.material_number}</td>
+                    <td>${item.product_description}</td>
+                    <td>${item.batch_number}</td>
+                    <td>${item.shipment_number}</td>
+                    <td><strong>${item.quantity}</strong></td>
+                    <td>${item.remarks}</td>
+                </tr>
+            `);
+        });
+        
+        $('#previewSection').slideDown();
+        $('html, body').animate({
+            scrollTop: $('#previewSection').offset().top - 100
+        }, 500);
+    }
+    
+    // Execute Transfer
+    $('#executeBtn').click(function() {
+        if (!confirm('Are you sure you want to transfer ALL items from ' + $('#summarySource').text() + ' to ' + $('#summaryDest').text() + '?')) {
+            return;
+        }
+        
+        const sourceRack = $('#sourceRack').val();
+        const destRack = $('#destRack').val();
+        
+        $.ajax({
+            url: '/execute-mass-transfer',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                source_rack: sourceRack,
+                dest_rack: destRack
+            }),
+            success: function(response) {
+                showAlert(response.message, 'success');
+                $('#previewSection').slideUp();
+                $('#sourceRack').val('');
+                $('#destRack').val('');
+                
+                // Redirect after 2 seconds
+                setTimeout(function() {
+                    window.location.href = '/stocks';
+                }, 2000);
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Error executing mass transfer';
+                showAlert(error, 'danger');
+            }
+        });
+    });
+    
+    // Cancel Button
+    $('#cancelBtn').click(function() {
+        $('#previewSection').slideUp();
+        $('#sourceRack').val('');
+        $('#destRack').val('');
+    });
+    
+    // Show Alert
+    function showAlert(message, type) {
+        const alert = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        $('#alertContainer').html(alert);
+        $('html, body').animate({ scrollTop: 0 }, 300);
+    }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

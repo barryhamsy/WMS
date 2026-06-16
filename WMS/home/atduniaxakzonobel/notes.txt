@@ -1,0 +1,38 @@
+create logs folder
+create static folder
+create uploads folder
+create templates folder
+upload all templates
+upload warehouse.db
+upload requirements.txt
+upload all .py
+edit wsgi.py to 
+
+import sys
+path = '/home/atduniaxakzonobel/'
+if path not in sys.path:
+    sys.path.append(path)
+
+from app import app as application
+
+pip install -r /home/atduniaxakzonobel/requirements.txt
+pip install fpdf
+
+#EDIT RACKING DATA AS REQUIRED
+def generate_racking_data():
+    racking_data = []
+
+    aisles = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']  # Aisles from A to K
+    positions = range(1, 11)  # Positions from 01 to 10
+
+    for aisle in aisles:
+        for level in range(1, 6):  # Levels from 01 to 05
+            for position in positions:
+                racking_number = f"{aisle}-{str(level).zfill(2)}-{str(position).zfill(2)}"
+                racking_data.append({"racking_number": racking_number, "aisle": aisle})
+
+    return racking_data
+
+email: 3circledesign@gmail.com
+username: atduniaakzonobel
+password: atdunia3000

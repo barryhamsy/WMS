@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Goods Receiving</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+   <style>
+        body {
+            background-color: #C7C7C7; /* Modern light background */
+            color: #212529;
+        }
+
+        /* Updated navbar styling */
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            color: #adb5bd;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding-top: 40px;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .table th, .table td {
+            vertical-align: middle;
+            font-size: 0.95rem;
+            padding: 1rem;
+        }
+
+        .table th {
+            background-color: #495057;
+            color: #fff;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f8f9fa;
+        }
+
+        .alert {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .btn-primary, .btn-success, .btn-danger {
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover, .btn-success:hover, .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        h4 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-top: 2rem;
+        }
+
+        .table-container {
+            margin-top: 40px;
+        }
+
+        /* Responsive behavior */
+        @media (max-width: 768px) {
+            .table th, .table td {
+                font-size: 0.85rem;
+                padding: 0.75rem;
+            }
+
+            h2, h4 {
+                font-size: 1.75rem;
+            }
+        }
+
+       .hidden {
+            display: none;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <!-- Logout button as a small styled Bootstrap button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <h1 class="text-center">Manual Goods Receiving</h1>
+
+    <div id="alert_message" class="alert d-none" role="alert"></div>
+
+    <a href="/create-stock" class="btn btn-success">Upload GR via excel file</a>
+    <br>
+    <br>
+    <!-- Upload Form -->
+    <form id="upload_stock_form" enctype="multipart/form-data">
+        <div class="hidden">
+            <label for="file" class="form-label">Upload Stock Excel File:</label>
+            <input type="file" id="file" name="file" class="form-control" accept=".xlsx, .xls" required>
+        </div>
+        <button type="submit" class="btn btn-primary hidden">Preview</button>
+    </form>
+
+    <!-- Search Form -->
+<div class="mb-4">
+  <label for="material_number_search" class="form-label">Search SKU</label>
+  <div class="input-group">
+    <input
+      type="text"
+      id="material_number_search"
+      class="form-control"
+      placeholder="Type material no. or description… then press Enter"
+      autocomplete="off"
+    >
+    <button id="search_sku_btn" class="btn btn-primary" type="button">Search</button>
+  </div>
+
+  <!-- results list (appears only when multiple matches) -->
+  <div id="search_result" class="mt-3"></div>
+</div>
+
+    <form id="add_stock_form" class="d-none">
+        <div class="card p-4 shadow">
+            <h3>SKU Details</h3>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="material_number" class="form-label">Material Number:</label>
+                    <input type="text" id="material_number" class="form-control" disabled>
+                </div>
+                <div class="col-md-6">
+                    <label for="product_description" class="form-label">Product Description:</label>
+                    <input type="text" id="product_description" class="form-control" disabled>
+                </div>
+            </div>
+
+            <h3>Stock Information</h3>
+            <div class="row mb-3">
+                <div class="col-md-2">
+                    <label for="quantity" class="form-label">Quantity:</label>
+                    <input type="number" id="quantity" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="batch_number" class="form-label">Batch Number:</label>
+                    <input type="text" id="batch_number" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="shipment_number" class="form-label">Shipment Number:</label>
+                    <input type="text" id="shipment_number" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="racking_number" class="form-label">Racking Number:</label>
+                    <select id="racking_number" class="form-control" name="racking_number" required>
+                        {% for racking in racking_numbers %}
+                        <option value="{{ racking.racking_number }}">{{ racking.racking_number }} (Aisle {{ racking.aisle }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="remarks" class="form-label">Remarks:</label>
+                    <input type="text" id="remarks" class="form-control">
+                </div>
+            </div>
+
+            <button type="button" id="add_to_list_btn" class="btn btn-success">Add to Preview List</button>
+        </div>
+    </form>
+
+    <h3 class="mt-5">Preview Stock List</h3>
+    <table class="table table-striped table-bordered mt-3">
+        <thead class="table-dark">
+        <tr>
+            <th>Material Number</th>
+            <th>Product Description</th>
+            <th>Quantity</th>
+            <th>Batch Number</th>
+            <th>Shipment Number</th>
+            <th>Racking Number</th>
+            <th>Remarks</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody id="preview_body">
+        <!-- Dynamic content will go here -->
+        </tbody>
+    </table>
+
+    <button id="submit_stock_btn" class="btn btn-success mt-4">Submit All</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ============================
+// Strict DB + Preview capacity enforcement
+// ============================
+
+// Fetch just-the-facts for a rack: current DB qty and max capacity for the incoming SKU.
+// We pass incoming_quantity: 0 so the server doesn't pre-decide; we compute on client.
+function fetchRackInfo(rackingNumber, materialNumber) {
+  return fetch('/check-racking-capacity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      racking_number: rackingNumber,
+      material_number: materialNumber,
+      incoming_quantity: 0
+    })
+  }).then(r => r.json());
+}
+
+// Sum quantities already in preview for a given rack (optionally excluding a row when re-checking)
+function sumPreviewQtyForRack(rackingNumber, excludeRow = null) {
+  const rows = document.querySelectorAll('#preview_body tr');
+  let total = 0;
+  rows.forEach(row => {
+    if (excludeRow && row === excludeRow) return;
+    const rackSel = row.querySelector('.racking-dropdown');
+    const qtyInp  = row.querySelector('.quantity-input');
+    if (!rackSel || !qtyInp) return;
+    const rackVal = rackSel.value;
+    const qtyVal  = parseInt(qtyInp.value, 10);
+    if (rackVal === rackingNumber && !Number.isNaN(qtyVal) && qtyVal > 0) {
+      total += qtyVal;
+    }
+  });
+  return total;
+}
+
+// Enable submit only if at least one row and no "danger" rows
+function updateSubmitButtonStatus() {
+  const rows = document.querySelectorAll('#preview_body tr');
+  const submitButton = document.getElementById('submit_stock_btn');
+  let anyDanger = false;
+  rows.forEach(row => { if (row.classList.contains('table-danger')) anyDanger = true; });
+  submitButton.disabled = (rows.length === 0) || anyDanger;
+}
+
+// ============================
+// Upload CSV/XLSX -> Preview (sequential + strict check)
+// ============================
+
+document.getElementById('upload_stock_form').addEventListener('submit', function(event) {
+  event.preventDefault();
+  const formData = new FormData(this);
+
+  fetch('/preview-stock', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(async data => {
+      if (data.error) return alert('Error: ' + data.error);
+
+      const previewBody = document.getElementById('preview_body');
+      previewBody.innerHTML = '';
+
+      for (const stock of data.stock_list) {
+        // Required fields
+        if (!stock.material_number || !stock.product_description || !stock.racking_number || !stock.quantity) {
+          alert('Skipping a line due to missing Material/Description/Racking/Quantity.');
+          continue;
+        }
+        if (!stock.batch_number || String(stock.batch_number).trim() === '') {
+          alert(`Batch number is required. Skipping ${stock.material_number} → ${stock.racking_number}.`);
+          continue;
+        }
+
+        const qty = parseInt(stock.quantity, 10);
+        if (Number.isNaN(qty) || qty <= 0) {
+          alert(`Invalid quantity for ${stock.material_number}. Skipped.`);
+          continue;
+        }
+
+        // Get DB current + max capacity for this SKU/rack
+        const info = await fetchRackInfo(stock.racking_number, stock.material_number);
+        if (info.error) {
+          alert('Capacity check error: ' + info.error);
+          continue;
+        }
+
+        // Fallbacks in case server omitted fields
+        const currentDB   = parseInt(info.current_quantity ?? 0, 10) || 0;
+        const maxCapacity = parseInt(info.max_capacity ?? 0, 10);
+
+        if (!maxCapacity || maxCapacity <= 0) {
+          alert(`Cannot determine capacity for ${stock.racking_number} / ${stock.material_number}. Skipping.`);
+          continue;
+        }
+
+        const alreadyInPreview = sumPreviewQtyForRack(stock.racking_number);
+        const projected = currentDB + alreadyInPreview + qty;
+
+        if (projected > maxCapacity) {
+          alert(
+            `Capacity exceeded for ${stock.racking_number}.\n\n` +
+            `Max: ${maxCapacity}\n` +
+            `Current in DB: ${currentDB}\n` +
+            `Already in preview: ${alreadyInPreview}\n` +
+            `This line: ${qty}`
+          );
+          // BLOCK: do not add the row at all
+          continue;
+        }
+
+        addRowToPreview(previewBody, stock);
+        updateSubmitButtonStatus();
+      }
+    })
+    .catch(err => alert('Error uploading file: ' + err.message));
+});
+
+// ============================
+// Manual Add → Preview (strict check)
+// ============================
+
+document.getElementById('add_to_list_btn').addEventListener('click', function() {
+  const previewBody        = document.getElementById('preview_body');
+  if (!previewBody) { alert('Preview list not found.'); return; }
+
+  const materialNumber     = (document.getElementById('material_number').value || '').trim();
+  const productDescription = (document.getElementById('product_description').value || '').trim();
+  const quantity           = parseInt(document.getElementById('quantity').value, 10);
+  const batchNumber        = (document.getElementById('batch_number').value || '').trim();
+  const shipmentNumber     = (document.getElementById('shipment_number').value || '').trim();
+  const rackingNumber      = (document.getElementById('racking_number').value || '').trim();
+  const remarks            = (document.getElementById('remarks').value || '').trim();
+
+  // Required
+  if (!materialNumber || !productDescription || !rackingNumber || Number.isNaN(quantity) || quantity <= 0) {
+    alert('Please fill in Material, Description, Racking, and a positive Quantity.');
+    return;
+  }
+  if (!batchNumber) {
+    alert('Batch number is required before adding to preview.');
+    return;
+  }
+
+  const alreadyInPreview = sumPreviewQtyForRack(rackingNumber);
+
+  fetchRackInfo(rackingNumber, materialNumber)
+    .then(info => {
+      if (info.error) {
+        alert('Capacity check error: ' + info.error);
+        return;
+      }
+
+      const currentDB   = parseInt(info.current_quantity ?? 0, 10) || 0;
+      const maxCapacity = parseInt(info.max_capacity ?? 0, 10);
+
+      if (!maxCapacity || maxCapacity <= 0) {
+        alert(`Cannot determine capacity for ${rackingNumber} / ${materialNumber}.`);
+        return;
+      }
+
+      const projected = currentDB + alreadyInPreview + quantity;
+
+      if (projected > maxCapacity) {
+        alert(
+          `Capacity exceeded for ${rackingNumber}.\n\n` +
+          `Max: ${maxCapacity}\n` +
+          `Current in DB: ${currentDB}\n` +
+          `Already in preview: ${alreadyInPreview}\n` +
+          `This line: ${quantity}`
+        );
+        return; // BLOCK add
+      }
+
+      // OK
+      addRowToPreview(previewBody, {
+        material_number: materialNumber,
+        product_description: productDescription,
+        quantity: quantity,
+        batch_number: batchNumber,
+        shipment_number: shipmentNumber,
+        racking_number: rackingNumber,
+        remarks: remarks
+      });
+      updateSubmitButtonStatus();
+    })
+    .catch(err => alert('Error checking capacity: ' + err.message));
+});
+
+// ============================
+// Row builder (kept same, reads rack from dropdown later)
+// ============================
+
+function addRowToPreview(previewBody, stock, rowClass = '') {
+  const rackingDropdown = `
+    <select class="form-control racking-dropdown">
+      {% for racking in racking_numbers %}
+      <option value="{{ racking.racking_number }}" ${stock.racking_number === "{{ racking.racking_number }}" ? "selected" : ""}>
+        {{ racking.racking_number }} (Aisle {{ racking.aisle }})
+      </option>
+      {% endfor %}
+    </select>
+  `;
+
+  const row = `<tr class="${rowClass}">
+    <td class="material-number-cell" data-material-number="${stock.material_number}">${stock.material_number}</td>
+    <td class="product-description-cell">${stock.product_description}</td>
+    <td><input type="number" value="${stock.quantity}" class="form-control quantity-input" min="1" /></td>
+    <td class="batch-number-cell">${stock.batch_number}</td>
+    <td class="shipment-number-cell">${stock.shipment_number}</td>
+    <td>${rackingDropdown}</td>
+    <td class="remarks-cell">${stock.remarks || ''}</td>
+    <td><button class="btn btn-danger btn-sm remove_btn">Remove</button></td>
+  </tr>`;
+  previewBody.insertAdjacentHTML('beforeend', row);
+}
+
+// ============================
+// Row interactions: Remove / Change rack / Change qty (re-check strict)
+// ============================
+
+// Remove
+document.addEventListener('click', function(event) {
+  if (event.target.classList.contains('remove_btn')) {
+    const row = event.target.closest('tr');
+    row.remove();
+    updateSubmitButtonStatus();
+  }
+});
+
+// Re-check when racking changes
+document.addEventListener('change', function(event) {
+  if (event.target.classList.contains('racking-dropdown')) {
+    const row = event.target.closest('tr');
+    recheckRowStrict(row);
+  }
+});
+
+// Re-check when quantity changes
+document.addEventListener('input', function(event) {
+  if (event.target.classList.contains('quantity-input')) {
+    const row = event.target.closest('tr');
+    recheckRowStrict(row);
+  }
+});
+
+function recheckRowStrict(row) {
+  const rackSel = row.querySelector('.racking-dropdown');
+  const qtyInp  = row.querySelector('.quantity-input');
+  const matCell = row.querySelector('.material-number-cell');
+
+  if (!rackSel || !qtyInp || !matCell) return;
+
+  const rackingNumber  = rackSel.value;
+  const quantity       = parseInt(qtyInp.value, 10);
+  const materialNumber = (matCell.getAttribute('data-material-number') || matCell.textContent || '').trim();
+
+  if (!rackingNumber || !materialNumber || Number.isNaN(quantity) || quantity <= 0) {
+    row.classList.add('table-danger');
+    updateSubmitButtonStatus();
+    return;
+  }
+
+  const othersInPreview = sumPreviewQtyForRack(rackingNumber, row);
+
+  fetchRackInfo(rackingNumber, materialNumber)
+    .then(info => {
+      const currentDB   = parseInt(info.current_quantity ?? 0, 10) || 0;
+      const maxCapacity = parseInt(info.max_capacity ?? 0, 10);
+
+      if (!maxCapacity || maxCapacity <= 0) {
+        row.classList.add('table-danger');
+        updateSubmitButtonStatus();
+        return;
+      }
+
+      const projected = currentDB + othersInPreview + quantity;
+
+      if (projected > maxCapacity) {
+        row.classList.add('table-danger');
+      } else {
+        row.classList.remove('table-danger');
+      }
+      updateSubmitButtonStatus();
+    })
+    .catch(() => {
+      row.classList.add('table-danger');
+      updateSubmitButtonStatus();
+    });
+}
+
+// ============================
+// FIXED Search SKU for Manual GR
+// ============================
+// Replace the search section (lines 543-655) with this code:
+
+const $search = document.getElementById('material_number_search');
+const $btnSearch = document.getElementById('search_sku_btn');
+const $result = document.getElementById('search_result');
+
+function renderMatches(matches){
+  // If only one match, auto-apply it
+  if (matches.length === 1) {
+    applySku(matches[0]);
+    return;
+  }
+  // Otherwise list them as selectable
+  const items = matches.map(m => {
+    return `
+      <button type="button" class="list-group-item list-group-item-action sku-pick"
+              data-material="${m.material_number}"
+              data-description="${m.product_description}">
+        <div class="d-flex w-100 justify-content-between">
+          <strong>${m.material_number}</strong>
+        </div>
+        <div class="small text-muted">${m.product_description}</div>
+      </button>`;
+  }).join('');
+
+  $result.innerHTML = `
+    <div class="list-group">
+      ${items}
+    </div>`;
+}
+
+function applySku(data){
+  // Clear any previous list
+  $result.innerHTML = '';
+
+  // Fill the panel
+  document.getElementById('material_number').value     = data.material_number || '';
+  document.getElementById('product_description').value = data.product_description || '';
+
+  // Show form if hidden
+  document.getElementById('add_stock_form').classList.remove('d-none');
+  
+  // Focus on quantity field
+  document.getElementById('quantity').focus();
+}
+
+// FIXED doSearch function for manual_gr.html
+// Replace the doSearch function (around line 590-623) with this:
+
+function doSearch(){
+  const q = ($search.value || '').trim();
+  if (!q) {
+    $result.innerHTML = '<div class="alert alert-warning">Please type a material no. or description.</div>';
+    return;
+  }
+
+  // Call the CORRECT endpoint for GR - search-sku-for-gr
+  fetch('/search-sku-for-gr', {  // ← CHANGED from '/search-sku'
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ search_term: q })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      $result.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+      document.getElementById('add_stock_form').classList.add('d-none');
+      return;
+    }
+
+    // Check for results array
+    if (Array.isArray(data.results) && data.results.length > 0) {
+      renderMatches(data.results);
+    } else {
+      $result.innerHTML = '<div class="alert alert-warning">No matches found.</div>';
+      document.getElementById('add_stock_form').classList.add('d-none');
+    }
+  })
+  .catch(err => {
+    $result.innerHTML = `<div class="alert alert-danger">Search error: ${err.message}</div>`;
+  });
+}
+
+// Click search button
+$btnSearch.addEventListener('click', (e) => { 
+  e.preventDefault(); 
+  doSearch(); 
+});
+
+// ENTER to search
+$search.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    doSearch();
+  }
+});
+
+// Pick from the multi-result list
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.sku-pick');
+  if (!btn) return;
+  applySku({
+    material_number: btn.dataset.material,
+    product_description: btn.dataset.description
+  });
+});
+
+// ============================
+// Submit all (unchanged shape; server should re-check in bulk)
+// ============================
+
+document.getElementById('submit_stock_btn').addEventListener('click', function() {
+  const rows = document.querySelectorAll('#preview_body tr');
+  const stockList = [];
+
+  rows.forEach(row => {
+    const materialNumber = (row.querySelector('.material-number-cell')?.getAttribute('data-material-number') || row.querySelector('.material-number-cell')?.textContent || '').trim();
+    const productDesc    = (row.querySelector('.product-description-cell')?.textContent || '').trim();
+    const quantity       = parseInt(row.querySelector('.quantity-input')?.value || '0', 10);
+    const batchNumber    = (row.querySelector('.batch-number-cell')?.textContent || '').trim();
+    const shipmentNumber = (row.querySelector('.shipment-number-cell')?.textContent || '').trim();
+    const rackingNumber  = row.querySelector('.racking-dropdown')?.value || '';
+    const remarks        = (row.querySelector('.remarks-cell')?.textContent || '').trim();
+
+    stockList.push({
+      material_number: materialNumber,
+      product_description: productDesc,
+      quantity: quantity,
+      batch_number: batchNumber,
+      shipment_number: shipmentNumber,
+      racking_number: rackingNumber,
+      remarks: remarks
+    });
+  });
+
+  fetch('/submit-stock', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stock_list: stockList })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      alert('Error: ' + data.error);
+    } else {
+      alert('Stocks successfully submitted!');
+      location.reload();
+    }
+  })
+  .catch(error => alert('Error submitting stocks: ' + error.message));
+});
+
+// Disable submit initially
+document.getElementById('submit_stock_btn').disabled = true;
+
+</script>
+
+</body>
+</html>

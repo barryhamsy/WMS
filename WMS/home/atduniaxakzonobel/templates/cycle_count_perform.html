@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cycle Count - Enter Count Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #C7C7C7;
+            color: #212529;
+        }
+
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            padding-top: 40px;
+        }
+
+        .card {
+            margin-bottom: 15px;
+        }
+
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .btn-update {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .count-input {
+            width: 100px;
+        }
+
+        .difference {
+            font-weight: bold;
+        }
+
+        .difference.positive {
+            color: green;
+        }
+
+        .difference.negative {
+            color: red;
+        }
+
+        .stock-row {
+            background-color: #f9f9f9;
+        }
+
+        .stock-row:hover {
+            background-color: #e9ecef;
+        }
+
+        .summary-card {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .filter-section {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .search-container {
+            position: relative;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .autocomplete-results.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .autocomplete-item .item-title {
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .autocomplete-item:hover .item-title,
+        .autocomplete-item.active .item-title {
+            color: white;
+        }
+
+        .autocomplete-item .item-subtitle {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .autocomplete-item:hover .item-subtitle,
+        .autocomplete-item.active .item-subtitle {
+            color: #f0f0f0;
+        }
+
+        .no-results {
+            padding: 10px 12px;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Loading indicator */
+        .search-input.is-loading {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="none" stroke="%23007bff" stroke-width="4"><animate attributeName="stroke-dasharray" dur="1.5s" repeatCount="indefinite" values="1,200;100,200;100,200"/><animate attributeName="stroke-dashoffset" dur="1.5s" repeatCount="indefinite" values="0;-15;-125"/></circle></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 20px 20px;
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #999;
+            font-size: 1.2rem;
+            display: none;
+        }
+
+        .clear-search.show {
+            display: block;
+        }
+
+        .clear-search:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">Cycle Count - Enter Data</a>
+        <div class="navbar-nav ms-auto">
+            <a class="btn btn-outline-light me-2" href="/cycle-count?include_zero={{ include_zero }}&racking_number={{ selected_racking }}">📋 Print View</a>
+            <a class="btn btn-outline-light" href="/dashboard">← Dashboard</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <!-- Filter Options -->
+    <div class="filter-section">
+        <h4>🔍 Cycle Count Filters</h4>
+        <form method="GET" action="/cycle-count/perform" id="filter-form" class="row g-3 align-items-end">
+            <!-- Racking Filter with Search -->
+            <div class="col-md-3">
+                <label for="racking_search" class="form-label"><strong>Racking Number:</strong></label>
+                <div class="search-container">
+                    <input type="text" 
+                        id="racking_search" 
+                        class="form-control search-input" 
+                        placeholder="Search racking..." 
+                        value="{% if selected_racking != 'all' %}{{ selected_racking }}{% endif %}"
+                        autocomplete="off">
+                    <input type="hidden" name="racking_number" id="racking_number" value="{{ selected_racking }}">
+                    <div id="racking_autocomplete" class="autocomplete-results"></div>
+                    <span class="clear-search" id="clear-racking">×</span>
+                </div>
+            </div>
+    
+            <!-- SKU Filter with Search -->
+            <div class="col-md-3">
+                <label for="sku_search" class="form-label"><strong>SKU / Material:</strong></label>
+                <div class="search-container">
+                    <input type="text" 
+                        id="sku_search" 
+                        class="form-control search-input" 
+                        placeholder="Search SKU..." 
+                        value="{% if selected_sku != 'all' %}{{ selected_sku }}{% endif %}"
+                        autocomplete="off">
+                    <input type="hidden" name="material_number" id="material_number" value="{{ selected_sku }}">
+                    <div id="sku_autocomplete" class="autocomplete-results"></div>
+                    <span class="clear-search" id="clear-sku">×</span>
+                </div>
+            </div>
+    
+            <!-- Zero Stock Toggle -->
+            <div class="col-md-2">
+                <label for="include_zero" class="form-label"><strong>Zero Stock:</strong></label>
+                <select name="include_zero" id="include_zero" class="form-select">
+                    <option value="yes" {% if include_zero == 'yes' %}selected{% endif %}>Include</option>
+                    <option value="no" {% if include_zero == 'no' %}selected{% endif %}>Exclude</option>
+                </select>
+            </div>
+    
+            <!-- Apply Button -->
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">📊 Apply</button>
+            </div>
+    
+            <!-- Summary Badges -->
+            <div class="col-md-2 text-end">
+                <div class="d-inline-block">
+                    <span class="badge bg-primary me-1">Total: <span id="total-items">0</span></span>
+                    <span class="badge bg-success me-1">Done: <span id="updated-count">0</span></span>
+                    <span class="badge bg-warning">Left: <span id="pending-count">0</span></span>
+                </div>
+            </div>
+        </form>
+        {% if selected_racking != 'all' %}
+        <div class="alert alert-info mt-3 mb-0">
+            <strong>📍 Counting Racking:</strong> {{ selected_racking }}
+            {% if selected_sku != 'all' %} | <strong>SKU:</strong> {{ selected_sku }}{% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Flash Messages -->
+    <div id="alert-container"></div>
+
+    <!-- Cycle Count Form -->
+    <form id="cycle-count-form">
+        {% for material_number, stocks in sku_stocks.items() %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Material:</strong> {{ material_number }}
+                    </div>
+                    <div class="col-md-8">
+                        <strong>Description:</strong> {{ stocks[0].product_description }}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Batch Number</th>
+                                <th>Shipment Number</th>
+                                <th>Racking Number</th>
+                                <th>System Qty</th>
+                                <th>Counted Qty</th>
+                                <th>Difference</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in stocks %}
+                            {% if stock.stock_id %}
+                            <tr class="stock-row" data-stock-id="{{ stock.stock_id }}" data-system-qty="{{ stock.quantity }}">
+                                <td>{{ stock.batch_number or 'N/A' }}</td>
+                                <td>{{ stock.shipment_number or 'N/A' }}</td>
+                                <td>{{ stock.racking_number or 'N/A' }}</td>
+                                <td class="system-qty">{{ stock.quantity }}</td>
+                                <td>
+                                    <input type="number" 
+                                           class="form-control form-control-sm count-input" 
+                                           name="count_{{ stock.stock_id }}" 
+                                           min="0" 
+                                           placeholder="Enter count"
+                                           data-stock-id="{{ stock.stock_id }}">
+                                </td>
+                                <td class="difference" data-stock-id="{{ stock.stock_id }}">-</td>
+                                <td><small>{{ stock.remarks or '' }}</small></td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            No stock items found. {% if include_zero == 'no' %}<a href="/cycle-count/perform?include_zero=yes">Show zero stock items</a>{% endif %}
+        </div>
+        {% endfor %}
+    </form>
+
+    <!-- Update Button (Fixed) -->
+    <button type="button" id="submit-btn" class="btn btn-success btn-update" disabled>
+        💾 Submit Cycle Count
+    </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let totalItems = 0;
+    let updatedItems = 0;
+
+    // Calculate difference as user types
+    document.querySelectorAll('.count-input').forEach(input => {
+        totalItems++;
+        
+        input.addEventListener('input', function() {
+            const stockId = this.dataset.stockId;
+            const systemQty = parseInt(this.closest('tr').dataset.systemQty);
+            const countedQty = parseInt(this.value) || 0;
+            const difference = countedQty - systemQty;
+            
+            // Update difference cell
+            const diffCell = document.querySelector(`.difference[data-stock-id="${stockId}"]`);
+            if (this.value !== '') {
+                diffCell.textContent = difference >= 0 ? `+${difference}` : difference;
+                diffCell.className = 'difference ' + (difference > 0 ? 'positive' : difference < 0 ? 'negative' : '');
+                this.closest('tr').classList.add('table-warning');
+            } else {
+                diffCell.textContent = '-';
+                diffCell.className = 'difference';
+                this.closest('tr').classList.remove('table-warning');
+            }
+            
+            updateSummary();
+        });
+    });
+
+    function updateSummary() {
+        updatedItems = document.querySelectorAll('.count-input').length;
+        const filledInputs = Array.from(document.querySelectorAll('.count-input')).filter(input => input.value !== '').length;
+        const pending = updatedItems - filledInputs;
+        
+        document.getElementById('total-items').textContent = totalItems;
+        document.getElementById('updated-count').textContent = filledInputs;
+        document.getElementById('pending-count').textContent = pending;
+        
+        // Enable submit button if at least one field is filled
+        document.getElementById('submit-btn').disabled = filledInputs === 0;
+    }
+
+    // Submit cycle count
+    document.getElementById('submit-btn').addEventListener('click', function() {
+        const updates = [];
+        
+        document.querySelectorAll('.count-input').forEach(input => {
+            if (input.value !== '') {
+                updates.push({
+                    stock_id: input.dataset.stockId,
+                    counted_qty: parseInt(input.value)
+                });
+            }
+        });
+        
+        if (updates.length === 0) {
+            showAlert('Please enter at least one count.', 'warning');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to update ${updates.length} stock item(s)? This will overwrite the current quantities.`)) {
+            return;
+        }
+        
+        // Disable button during submission
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+        
+        fetch('/cycle-count/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ updates: updates })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(`Successfully updated ${data.updated_count} stock item(s)!`, 'success');
+                
+                // Show adjustments summary
+                if (data.adjustments && data.adjustments.length > 0) {
+                    let summary = '<strong>Adjustments Made:</strong><ul>';
+                    data.adjustments.forEach(adj => {
+                        summary += `<li>${adj.material_number} - ${adj.product_description}<br>`;
+                        summary += `Batch: ${adj.batch_number} | ${adj.old_qty} → ${adj.new_qty} (${adj.difference >= 0 ? '+' : ''}${adj.difference})</li>`;
+                    });
+                    summary += '</ul>';
+                    showAlert(summary, 'info', false);
+                }
+                
+                // Reload page after 3 seconds
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } else {
+                showAlert('Error: ' + data.error, 'danger');
+                this.disabled = false;
+                this.innerHTML = '💾 Submit Cycle Count';
+            }
+        })
+        .catch(error => {
+            showAlert('Error submitting cycle count: ' + error, 'danger');
+            this.disabled = false;
+            this.innerHTML = '💾 Submit Cycle Count';
+        });
+    });
+
+    function showAlert(message, type = 'info', autoClose = true) {
+        const alertContainer = document.getElementById('alert-container');
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        alertContainer.appendChild(alertDiv);
+        
+        if (autoClose) {
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    }
+
+    // Initialize summary
+    updateSummary();
+
+        // ============ AUTOCOMPLETE FOR CYCLE COUNT FILTERS ============
+    
+    // Debounce helper
+    function debounce(fn, wait) {
+        let t;
+        return (...args) => {
+            clearTimeout(t);
+            t = setTimeout(() => fn(...args), wait);
+        };
+    }
+    
+    // ============ SKU SEARCH ============
+    let skuResults = [];
+    let skuSelectedIndex = -1;
+    
+    function searchSku(searchTerm) {
+        if (!searchTerm || searchTerm.length < 2) {
+            document.getElementById('sku_autocomplete').classList.remove('show');
+            document.getElementById('sku_autocomplete').innerHTML = '';
+            return;
+        }
+    
+        document.getElementById('sku_search').classList.add('is-loading');
+    
+        fetch('/search-sku-cycle-count', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ search_term: searchTerm })
+        })
+        .then(r => r.json())
+        .then(data => {
+            skuResults = data.results || [];
+            displaySkuResults();
+        })
+        .catch(err => {
+            console.error('SKU search error:', err);
+            document.getElementById('sku_autocomplete').classList.remove('show');
+        })
+        .finally(() => {
+            document.getElementById('sku_search').classList.remove('is-loading');
+        });
+    }
+    
+    function displaySkuResults() {
+        const container = document.getElementById('sku_autocomplete');
+        container.innerHTML = '';
+    
+        if (skuResults.length === 0) {
+            container.innerHTML = '<div class="no-results">No SKUs found</div>';
+            container.classList.add('show');
+            return;
+        }
+    
+        skuResults.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.dataset.index = index;
+            div.innerHTML = `
+                <div class="item-title">${item.material_number}</div>
+                <div class="item-subtitle">${item.product_description}</div>
+            `;
+            container.appendChild(div);
+        });
+    
+        container.classList.add('show');
+        skuSelectedIndex = -1;
+    }
+    
+    function selectSku(index) {
+        if (index >= 0 && index < skuResults.length) {
+            const selected = skuResults[index];
+            document.getElementById('sku_search').value = selected.material_number;
+            document.getElementById('material_number').value = selected.material_number;
+            document.getElementById('sku_autocomplete').classList.remove('show');
+            document.getElementById('clear-sku').classList.add('show');
+        }
+    }
+    
+    // ============ RACKING SEARCH ============
+    let rackingResults = [];
+    let rackingSelectedIndex = -1;
+    
+    function searchRacking(searchTerm) {
+        if (!searchTerm || searchTerm.length < 1) {
+            document.getElementById('racking_autocomplete').classList.remove('show');
+            document.getElementById('racking_autocomplete').innerHTML = '';
+            return;
+        }
+    
+        document.getElementById('racking_search').classList.add('is-loading');
+    
+        fetch('/search-racking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ search_term: searchTerm })
+        })
+        .then(r => r.json())
+        .then(data => {
+            rackingResults = data.results || [];
+            displayRackingResults();
+        })
+        .catch(err => {
+            console.error('Racking search error:', err);
+            document.getElementById('racking_autocomplete').classList.remove('show');
+        })
+        .finally(() => {
+            document.getElementById('racking_search').classList.remove('is-loading');
+        });
+    }
+    
+    function displayRackingResults() {
+        const container = document.getElementById('racking_autocomplete');
+        container.innerHTML = '';
+    
+        if (rackingResults.length === 0) {
+            container.innerHTML = '<div class="no-results">No racking found</div>';
+            container.classList.add('show');
+            return;
+        }
+    
+        rackingResults.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.dataset.index = index;
+            div.innerHTML = `
+                <div class="item-title">${item.racking_number}</div>
+                ${item.aisle ? `<div class="item-subtitle">Aisle: ${item.aisle}</div>` : ''}
+            `;
+            container.appendChild(div);
+        });
+    
+        container.classList.add('show');
+        rackingSelectedIndex = -1;
+    }
+    
+    function selectRacking(index) {
+        if (index >= 0 && index < rackingResults.length) {
+            const selected = rackingResults[index];
+            document.getElementById('racking_search').value = selected.racking_number;
+            document.getElementById('racking_number').value = selected.racking_number;
+            document.getElementById('racking_autocomplete').classList.remove('show');
+            document.getElementById('clear-racking').classList.add('show');
+        }
+    }
+    
+    // ============ EVENT BINDINGS ============
+    
+    // SKU Search Events
+    const skuSearch = document.getElementById('sku_search');
+    const debouncedSkuSearch = debounce((val) => searchSku(val), 300);
+    
+    skuSearch.addEventListener('input', function() {
+        const val = this.value.trim();
+        debouncedSkuSearch(val);
+        
+        if (val) {
+            document.getElementById('clear-sku').classList.add('show');
+        } else {
+            document.getElementById('clear-sku').classList.remove('show');
+            document.getElementById('material_number').value = 'all';
+        }
+    });
+    
+    skuSearch.addEventListener('keydown', function(e) {
+        const items = document.querySelectorAll('#sku_autocomplete .autocomplete-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            skuSelectedIndex = Math.min(skuSelectedIndex + 1, items.length - 1);
+            items.forEach((item, i) => {
+                item.classList.toggle('active', i === skuSelectedIndex);
+            });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            skuSelectedIndex = Math.max(skuSelectedIndex - 1, 0);
+            items.forEach((item, i) => {
+                item.classList.toggle('active', i === skuSelectedIndex);
+            });
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (skuSelectedIndex >= 0) {
+                selectSku(skuSelectedIndex);
+            }
+        } else if (e.key === 'Escape') {
+            document.getElementById('sku_autocomplete').classList.remove('show');
+        }
+    });
+    
+    // Racking Search Events
+    const rackingSearch = document.getElementById('racking_search');
+    const debouncedRackingSearch = debounce((val) => searchRacking(val), 300);
+    
+    rackingSearch.addEventListener('input', function() {
+        const val = this.value.trim();
+        debouncedRackingSearch(val);
+        
+        if (val) {
+            document.getElementById('clear-racking').classList.add('show');
+        } else {
+            document.getElementById('clear-racking').classList.remove('show');
+            document.getElementById('racking_number').value = 'all';
+        }
+    });
+    
+    rackingSearch.addEventListener('keydown', function(e) {
+        const items = document.querySelectorAll('#racking_autocomplete .autocomplete-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            rackingSelectedIndex = Math.min(rackingSelectedIndex + 1, items.length - 1);
+            items.forEach((item, i) => {
+                item.classList.toggle('active', i === rackingSelectedIndex);
+            });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            rackingSelectedIndex = Math.max(rackingSelectedIndex - 1, 0);
+            items.forEach((item, i) => {
+                item.classList.toggle('active', i === rackingSelectedIndex);
+            });
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (rackingSelectedIndex >= 0) {
+                selectRacking(rackingSelectedIndex);
+            }
+        } else if (e.key === 'Escape') {
+            document.getElementById('racking_autocomplete').classList.remove('show');
+        }
+    });
+    
+    // Click on autocomplete items
+    document.addEventListener('click', function(e) {
+        // SKU autocomplete click
+        const skuItem = e.target.closest('#sku_autocomplete .autocomplete-item');
+        if (skuItem) {
+            const index = parseInt(skuItem.dataset.index);
+            selectSku(index);
+        }
+        
+        // Racking autocomplete click
+        const rackingItem = e.target.closest('#racking_autocomplete .autocomplete-item');
+        if (rackingItem) {
+            const index = parseInt(rackingItem.dataset.index);
+            selectRacking(index);
+        }
+        
+        // Click outside - close dropdowns
+        if (!e.target.closest('#sku_search') && !e.target.closest('#sku_autocomplete')) {
+            document.getElementById('sku_autocomplete').classList.remove('show');
+        }
+        if (!e.target.closest('#racking_search') && !e.target.closest('#racking_autocomplete')) {
+            document.getElementById('racking_autocomplete').classList.remove('show');
+        }
+    });
+    
+    // Clear buttons
+    document.getElementById('clear-sku').addEventListener('click', function() {
+        document.getElementById('sku_search').value = '';
+        document.getElementById('material_number').value = 'all';
+        document.getElementById('sku_autocomplete').classList.remove('show');
+        this.classList.remove('show');
+        document.getElementById('sku_search').focus();
+    });
+    
+    document.getElementById('clear-racking').addEventListener('click', function() {
+        document.getElementById('racking_search').value = '';
+        document.getElementById('racking_number').value = 'all';
+        document.getElementById('racking_autocomplete').classList.remove('show');
+        this.classList.remove('show');
+        document.getElementById('racking_search').focus();
+    });
+    
+    // Show clear buttons on page load if values exist
+    if (document.getElementById('sku_search').value) {
+        document.getElementById('clear-sku').classList.add('show');
+    }
+    if (document.getElementById('racking_search').value) {
+        document.getElementById('clear-racking').classList.add('show');
+    }
+</script>
+
+</body>
+</html>

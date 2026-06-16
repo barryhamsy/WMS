@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer Stock</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+   <style>
+        body {
+            background-color: #C7C7C7; /* Modern light background */
+            color: #212529;
+        }
+
+        /* Updated navbar styling */
+        .navbar {
+            background-color: #343a40;
+            padding: 15px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            color: #adb5bd;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding-top: 40px;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .table th, .table td {
+            vertical-align: middle;
+            font-size: 0.95rem;
+            padding: 1rem;
+        }
+
+        .table th {
+            background-color: #495057;
+            color: #fff;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f8f9fa;
+        }
+
+        .alert {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .btn-primary, .btn-success, .btn-danger {
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover, .btn-success:hover, .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        h4 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-top: 2rem;
+        }
+
+        .table-container {
+            margin-top: 40px;
+        }
+
+        /* Responsive behavior */
+        @media (max-width: 768px) {
+            .table th, .table td {
+                font-size: 0.85rem;
+                padding: 0.75rem;
+            }
+
+        h2, h4 {
+            font-size: 1.75rem;
+            }
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <!-- Logout button as a small styled Bootstrap button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Container -->
+<div class="container mt-5">
+    <h1 class="text-center">Transfer Racking Location</h1>
+
+<!-- Search Form -->
+<form method="GET" action="/transfer-stock" class="row mb-4">
+    <!-- Material Number Search -->
+    <div class="col-md-5">
+        <input type="text" id="search_material_number" name="material_number" class="form-control" placeholder="Search by Material Number" value="{{ request.args.get('material_number', '') }}">
+    </div>
+    <!-- Batch Number Search -->
+    <div class="col-md-5">
+        <input type="text" id="search_batch_number" name="batch_number" class="form-control" placeholder="Search by Batch Number" value="{{ request.args.get('batch_number', '') }}">
+    </div>
+    <!-- Search Button -->
+    <div class="col-md-2">
+        <button type="submit" id="search_btn" class="btn btn-primary w-100">Search</button>
+    </div>
+</form>
+
+<!-- Stock List Table -->
+<div id="stock_table_container" class="table-responsive {% if not stocks %}d-none{% endif %}">
+    <table id="stock_table" class="table table-borderless table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Material Number</th>
+                <th>Product Description</th>
+                <th>Batch Number</th>
+                <th>Quantity</th>
+                <th>Current Racking Number</th>
+                <th>Transfer Quantity</th>
+                <th>New Racking Number</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="stock_body">
+            {% for stock in stocks %}
+            <tr>
+                <td>{{ stock.sku.material_number }}</td>
+                <td>{{ stock.sku.product_description }}</td>
+                <td>{{ stock.batch_number }}</td>
+                <td>{{ stock.quantity }}</td>
+                <td>{{ stock.racking_number }}</td>
+                <td>
+                    <input type="number" class="form-control transfer-quantity" min="1" max="{{ stock.quantity }}" placeholder="Enter quantity" data-stock-id="{{ stock.id }}">
+                </td>
+                <td>
+                    <select class="form-control new-racking" data-stock-id="{{ stock.id }}">
+                        {% for racking in racking_numbers %}
+                        <option value="{{ racking.racking_number }}">{{ racking.racking_number }} (Aisle {{ racking.aisle }})</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <button class="btn btn-primary transfer-btn" data-stock-id="{{ stock.id }}">Transfer</button>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center">No stocks found. Try searching above.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.getElementById('search_btn').addEventListener('click', function (event) {
+        event.preventDefault(); // Prevent form submission
+
+        // Get search input values
+        const materialNumber = document.getElementById('search_material_number').value.trim();
+        const batchNumber = document.getElementById('search_batch_number').value.trim();
+
+        // Construct the query string
+        const queryString = new URLSearchParams({
+            material_number: materialNumber,
+            batch_number: batchNumber
+        }).toString();
+
+        // Send AJAX request to the server
+        fetch(`/transfer-stock?${queryString}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.text()) // Get HTML content
+        .then(html => {
+            // Parse the HTML response to extract the stock rows
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTableBody = doc.querySelector('#stock_body');
+
+            // Replace the existing table body with the new filtered results
+            document.getElementById('stock_body').innerHTML = newTableBody.innerHTML;
+
+            // Show the table container
+            document.getElementById('stock_table_container').classList.remove('d-none');
+
+            // Re-attach event listeners for transfer buttons in the new rows
+            attachTransferButtonHandlers();
+        })
+        .catch(error => {
+            console.error('Error fetching stock data:', error);
+            alert('Error fetching stock data.');
+        });
+    });
+
+    // Function to attach click event listeners to transfer buttons
+    function attachTransferButtonHandlers() {
+        document.querySelectorAll('.transfer-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const stockId = this.getAttribute('data-stock-id');
+                const row = this.closest('tr');
+                const transferQuantity = row.querySelector('.transfer-quantity').value;
+                const newRackingNumber = row.querySelector('.new-racking').value;
+
+                // Validate input
+                if (!transferQuantity || transferQuantity <= 0) {
+                    alert('Please enter a valid quantity to transfer.');
+                    return;
+                }
+
+                // Check racking capacity before transferring
+                fetch('/check-racking-capacity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        racking_number: newRackingNumber,
+                        quantity: parseInt(transferQuantity)
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(`Error: ${data.error}`);
+                        return;
+                    }
+
+                    // Proceed with transferring stock
+                    fetch(`/transfer-stock/${stockId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            quantity: parseInt(transferQuantity),
+                            new_racking_number: newRackingNumber
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Stock transferred successfully!');
+                            location.reload();
+                        } else {
+                            alert(`Error: ${data.error}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error transferring stock:', error);
+                        alert('Error transferring stock.');
+                    });
+                })
+                .catch(error => {
+                    console.error('Error checking racking capacity:', error);
+                    alert('Error checking racking capacity.');
+                });
+            });
+        });
+    }
+
+    // Attach initial transfer button handlers
+    attachTransferButtonHandlers();
+</script>
+
+</body>
+</html>

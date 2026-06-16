@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<style>
+    body {
+        background-color: #C7C7C7;
+        color: #212529;
+    }
+
+    /* Spinner styling */
+    #loadingSpinner {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1050;
+    }
+
+    /* Navbar styling */
+    .navbar {
+        background-color: #343a40;
+        padding: 15px;
+    }
+
+    .navbar-brand {
+        font-weight: bold;
+        color: #fff;
+        font-size: 1.5rem;
+    }
+
+    .nav-link {
+        color: #adb5bd;
+        font-weight: 500;
+    }
+
+    .nav-link:hover {
+        color: #fff;
+    }
+
+    .container {
+        max-width: 1200px;
+        padding-top: 40px;
+    }
+
+    /* Modern table styling */
+    .table {
+        background-color: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+        padding: 0.75rem;
+        border-top: none;
+    }
+
+    .table th {
+        background-color: #343a40;
+        color: #fff;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .table tbody tr {
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: #f8f9fa;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #e9ecef;
+    }
+
+    /* Alerts */
+    .alert {
+        display: none;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+
+    /* Button styling */
+    .btn {
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Headings */
+    h2 {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    h4 {
+        font-size: 1.5rem;
+        font-weight: 500;
+        margin-top: 2rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .table th, .table td {
+            font-size: 0.85rem;
+            padding: 0.5rem;
+        }
+
+        h2, h4 {
+            font-size: 1.5rem;
+        }
+
+        .button-group {
+            flex-direction: column;
+            gap: 10px;
+        }
+    }
+
+    /* Flexbox for buttons */
+    .d-flex.justify-content-between.align-items-center {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+</style>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container mt-5">
+    <!-- Notification Area -->
+    <div class="alert alert-success" id="pdfSuccessAlert">
+        PDF has been successfully generated and downloaded.
+    </div>
+
+    <div class="alert alert-success" id="successAlert">
+        Order updated successfully.
+    </div>
+
+    <div class="alert alert-danger" id="errorAlert">
+        Error occurred.
+    </div>
+
+    <!-- Spinner for loading -->
+    <div id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>Order #{{ order.dn_number }} for {{ order.customer_name }}</h2>
+
+        <!-- Button Group -->
+        <div class="button-group">
+            <!-- Edit Order Button -->
+            {% if order.status == 'completed' %}
+                <button class="btn btn-warning" id="editOrderButton" disabled>
+                    Edit Order
+                </button>
+            {% else %}
+                <button class="btn btn-warning" id="editOrderButton">
+                    Edit Order
+                </button>
+            {% endif %}
+
+            <!-- Print Order Button (Opens PDF and triggers print) -->
+            <button type="button" class="btn btn-success" id="printOrderButton">
+                🖨️ Print Order
+            </button>
+
+            <!-- Download PDF Button -->
+            <a href="#" id="downloadPDF" class="btn btn-secondary">
+                📄 Download PDF
+            </a>
+
+            <!-- Toggle Order Status Button -->
+            <button type="button" class="btn btn-primary" id="toggleOrderStatusButton" data-status="{{ order.status }}">
+                {% if order.status == 'active' %}
+                    Mark as Completed
+                {% elif order.status == 'completed' %}
+                    Re-Open Order
+                {% endif %}
+            </button>
+
+            <!-- Cancel Order Button -->
+            <form id="cancelOrderForm" style="display:inline;">
+                <button type="button" class="btn btn-danger" id="cancelOrderButton" {% if order.status == 'completed' %}disabled{% endif %}>
+                    Cancel Order
+                </button>
+            </form>
+
+            <!-- Delete Order Button -->
+            <form id="deleteOrderForm" style="display:inline;">
+                <button type="button" class="btn btn-danger" id="deleteOrderButton" {% if order.status == 'completed' %}disabled{% endif %}>
+                    Delete Order
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Details Table -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm mt-4">
+            <tbody>
+                <tr>
+                    <th scope="row">Created at</th>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <th scope="row">Created by</th>
+                    <td>{{ order.created_by }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Address</th>
+                    <td colspan="3">{{ order.address }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Sales Order</th>
+                    <td>{{ order.sales_order }}</td>
+                    <th scope="row">Remarks</th>
+                    <td>{{ order.remarks }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Status</th>
+                    <td id="orderStatus">{{ order.status }}</td>
+                    <th scope="row">Total SKUs</th>
+                    <td>{{ total_sku }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Total Quantity</th>
+                    <td>{{ total_quantity }}</td>
+                    <th scope="row">Total Weight</th>
+                    <td>{{ "%.2f"|format(total_weight) }} kg</td>
+                </tr>
+                <tr>
+                    <th scope="row">Last Updated</th>
+                    <td>{{ order.last_updated_by }}</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h4>Order Items</h4>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>SKU ID</th>
+                <th>Product Description</th>
+                <th>Quantity</th>
+                <th>Batch Number</th>
+                <th>Shipment Number</th>
+                <th>Weight per Unit (kg)</th>
+                <th>Total Weight (kg)</th>
+                <th>Racking Number</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.items %}
+                <tr>
+                    <td>{{ item.sku.material_number }}</td>
+                    <td>{{ item.sku.product_description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.batch_number }}</td>
+                    <td>{{ item.shipment_number }}</td>
+                    <td>{{ "%.2f"|format(item.sku.weight) }}</td>
+                    <td>{{ "%.2f"|format(item.quantity * item.sku.weight) }}</td>
+                    <td>{{ item.racking_number }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for('create_order') }}" class="btn btn-primary">Create New Order</a>
+</div>
+
+<script>
+$(document).ready(function() {
+    // ========================================
+    // PRINT ORDER - Opens PDF in new window and triggers print
+    // ========================================
+    $('#printOrderButton').on('click', function() {
+        // Open PDF with print=true parameter
+        var printWindow = window.open(
+            "{{ url_for('print_order', order_id=order.id) }}?print=true",
+            'PrintOrder',
+            'width=800,height=600'
+        );
+
+        // Wait for PDF to load, then trigger print
+        if (printWindow) {
+            printWindow.onload = function() {
+                setTimeout(function() {
+                    printWindow.print();
+                }, 500);
+            };
+        }
+    });
+
+    // ========================================
+    // DOWNLOAD PDF - Downloads PDF file
+    // ========================================
+    $('#downloadPDF').on('click', function(e) {
+        e.preventDefault();
+        $('#loadingSpinner').show();
+        window.location.href = "{{ url_for('print_order', order_id=order.id) }}";
+        setTimeout(function(){
+            $('#loadingSpinner').hide();
+            $('#pdfSuccessAlert').fadeIn().delay(3000).fadeOut();
+        }, 2000);
+    });
+
+    // ========================================
+    // CANCEL ORDER
+    // ========================================
+    $('#cancelOrderButton').on('click', function() {
+        if (confirm('Are you sure you want to cancel this order?')) {
+            $('#loadingSpinner').show();
+            $.ajax({
+                url: "{{ url_for('cancel_order', order_id=order.id) }}",
+                type: 'POST',
+                success: function(response) {
+                    $('#loadingSpinner').hide();
+                    $('#successAlert').text('Order cancelled successfully.').fadeIn().delay(3000).fadeOut();
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    $('#loadingSpinner').hide();
+                    $('#errorAlert').text('Error: Order is already cancelled.').fadeIn().delay(3000).fadeOut();
+                }
+            });
+        }
+    });
+
+    // ========================================
+    // DELETE ORDER
+    // ========================================
+    $('#deleteOrderButton').on('click', function() {
+        if (confirm('Are you sure you want to delete this order?')) {
+            $('#loadingSpinner').show();
+            $.ajax({
+                url: "{{ url_for('delete_order', order_id=order.id) }}",
+                type: 'POST',
+                success: function(response) {
+                    $('#loadingSpinner').hide();
+                    $('#successAlert').text('Order deleted successfully.').fadeIn().delay(3000).fadeOut();
+                    setTimeout(function() {
+                        window.location.href = "/orders";
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    $('#loadingSpinner').hide();
+                    if (xhr.status === 400) {
+                        $('#errorAlert').text(xhr.responseJSON.error).fadeIn().delay(3000).fadeOut();
+                    } else {
+                        $('#errorAlert').text('Error deleting order.').fadeIn().delay(3000).fadeOut();
+                    }
+                }
+            });
+        }
+    });
+
+    // ========================================
+    // TOGGLE ORDER STATUS
+    // ========================================
+    $('#toggleOrderStatusButton').on('click', function() {
+        var currentStatus = $(this).data('status');
+        var newStatus = currentStatus === 'active' ? 'completed' : 'active';
+        var confirmMessage = currentStatus === 'active' ?
+            'Are you sure you want to mark this order as completed?' :
+            'Are you sure you want to re-open this order?';
+
+        if (confirm(confirmMessage)) {
+            $('#loadingSpinner').show();
+            $.ajax({
+                url: "{{ url_for('toggle_order_status', order_id=order.id) }}",
+                type: 'POST',
+                data: JSON.stringify({ 'current_status': currentStatus }),
+                contentType: 'application/json',
+                success: function(response) {
+                    $('#loadingSpinner').hide();
+
+                    // Update the status display
+                    $('#orderStatus').text(response.new_status);
+
+                    // Update the button text and data-status
+                    if (response.new_status === 'completed') {
+                        $('#toggleOrderStatusButton').text('Re-Open Order').data('status', 'completed');
+                        $('#cancelOrderButton').prop('disabled', true);
+                        $('#deleteOrderButton').prop('disabled', true);
+                        $('#editOrderButton').prop('disabled', true);
+                    } else if (response.new_status === 'active') {
+                        $('#toggleOrderStatusButton').text('Mark as Completed').data('status', 'active');
+                        $('#cancelOrderButton').prop('disabled', false);
+                        $('#deleteOrderButton').prop('disabled', false);
+                        $('#editOrderButton').prop('disabled', false);
+                    }
+
+                    $('#successAlert').text(response.message).fadeIn().delay(3000).fadeOut();
+                },
+                error: function(xhr) {
+                    $('#loadingSpinner').hide();
+                    $('#errorAlert').text(xhr.responseJSON.error || 'Error updating order status.').fadeIn().delay(3000).fadeOut();
+                }
+            });
+        }
+    });
+
+    // ========================================
+    // EDIT ORDER
+    // ========================================
+    $('#editOrderButton').on('click', function() {
+        var isDisabled = $(this).prop('disabled');
+        if (!isDisabled) {
+            window.location.href = "{{ url_for('edit_order', order_id=order.id) }}";
+        }
+    });
+});
+</script>
+
+<!-- Bootstrap JavaScript Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

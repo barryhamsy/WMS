@@ -1,0 +1,66 @@
+<!-- UPDATED FILTER SECTION for cycle_count_print.html (simplified version) -->
+<!-- This goes in the screen-only section -->
+
+<div class="no-print" style="max-width: 800px; margin: 80px auto 20px; padding: 20px; background: #f8f9fa; border-radius: 5px;">
+    <h4>🔍 Cycle Count Filters</h4>
+    <form method="GET" action="/cycle-count" class="row g-3">
+        <!-- Racking Filter -->
+        <div class="col-md-6">
+            <label for="racking_number" class="form-label"><strong>Racking:</strong></label>
+            <select name="racking_number" id="racking_number" class="form-select">
+                <option value="all" {% if selected_racking == 'all' %}selected{% endif %}>All Racking</option>
+                <optgroup label="Whole Racks">
+                    {% set rack_letters = [] %}
+                    {% for racking in racking_list %}
+                        {% if racking|length == 1 %}
+                            {% set _ = rack_letters.append(racking) %}
+                            <option value="{{ racking }}" {% if selected_racking == racking %}selected{% endif %}>
+                                📦 Rack {{ racking }} (All Bays)
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="Specific Bays">
+                    {% for racking in racking_list %}
+                        {% if racking|length > 1 %}
+                            <option value="{{ racking }}" {% if selected_racking == racking %}selected{% endif %}>
+                                {{ racking }}
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </optgroup>
+            </select>
+        </div>
+
+        <!-- Zero Stock Toggle -->
+        <div class="col-md-4">
+            <label for="include_zero" class="form-label"><strong>Zero Stock:</strong></label>
+            <select name="include_zero" id="include_zero" class="form-select">
+                <option value="yes" {% if include_zero == 'yes' %}selected{% endif %}>Include</option>
+                <option value="no" {% if include_zero == 'no' %}selected{% endif %}>Exclude</option>
+            </select>
+        </div>
+
+        <!-- Apply Button -->
+        <div class="col-md-2">
+            <label class="form-label d-block">&nbsp;</label>
+            <button type="submit" class="btn btn-primary w-100">📊 Apply</button>
+        </div>
+    </form>
+
+    <!-- Current Selection Info -->
+    <div class="alert alert-info mt-3 mb-0">
+        <strong>📋 Current Selection:</strong><br>
+        <strong>Racking:</strong> 
+        {% if selected_racking == 'all' %}
+            All Racking
+        {% elif selected_racking|length == 1 %}
+            Rack {{ selected_racking }} - All Bays (A-01, A-02, A-03, etc.)
+        {% else %}
+            {{ selected_racking }} (Specific Bay)
+        {% endif %}
+        <br>
+        <strong>Items:</strong> {{ total_stock_lines }}
+        | <strong>Zero Stock:</strong> {% if include_zero == 'yes' %}Included{% else %}Excluded{% endif %}
+    </div>
+</div>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rack Status</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #C7C7C7; color: #212529; }
+        .navbar { background-color: #343a40; padding: 15px; }
+        .navbar-brand { font-weight: bold; color: #fff; font-size: 1.5rem; }
+        .nav-link { color: #adb5bd; font-weight: 500; }
+        .nav-link:hover { color: #fff; }
+
+        .aisle-card {
+            background: white;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+        }
+
+        .aisle-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .aisle-label { font-size: 1rem; font-weight: 700; color: #343a40; }
+
+        .aisle-stats span {
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.72rem;
+        }
+
+        /* Grid layout */
+        .rack-grid-table {
+            border-collapse: separate;
+            border-spacing: 3px;
+            white-space: nowrap;
+        }
+
+        .col-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #6c757d;
+            text-align: center;
+            padding: 2px 6px;
+            min-width: 20px;
+        }
+
+        .bay-group {
+            border-left: 2px solid #dee2e6;
+            padding-left: 3px;
+        }
+
+        .bay-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #adb5bd;
+            text-align: center;
+            letter-spacing: 0.03em;
+        }
+
+        .rack-cell {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 70px;
+            height: 30px;
+            border-radius: 5px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border: 1px solid rgba(0,0,0,0.1);
+            cursor: default;
+            position: relative;
+            margin: 1px;
+        }
+
+        .rack-cell.occupied  { background-color: #d1e7dd; color: #0a3622; border-color: #a3cfbb; }
+        .rack-cell.mixed     { background-color: #fff3cd; color: #664d03; border-color: #ffda6a; }
+        .rack-cell.empty     { background-color: #f1f3f5; color: #adb5bd; border-color: #dee2e6; }
+        .rack-cell.missing   { background-color: transparent; border: 1px dashed #dee2e6; color: #ccc; }
+
+        .rack-cell .qty {
+            position: absolute;
+            top: 1px;
+            right: 3px;
+            font-size: 0.55rem;
+            opacity: 0.7;
+        }
+
+        .rack-cell .warn {
+            position: absolute;
+            bottom: 1px;
+            right: 2px;
+            font-size: 0.6rem;
+        }
+
+        .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        h1 { font-size: 3rem; font-weight: bold; }
+        h2 { font-size: 2rem; font-weight: bold; }
+
+        .btn-primary, .btn-success, .btn-danger, .btn-secondary, .btn-warning {
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover, .btn-success:hover, .btn-danger:hover,
+        .btn-secondary:hover, .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <img src="{{ url_for('static', filename='logo_.png') }}" alt="Logo" width="80" height="40" class="me-2">
+        <a class="navbar-brand" href="/">Inventory System</a>
+        <strong class="text-white">Welcome, {{ current_user.username }}!</strong>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create_racking">Racking Management</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stocks">Stock List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sku-list">SKU List</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-stock">Goods Receiving</a></li>
+                <li class="nav-item"><a class="nav-link" href="/add-sku">Create SKU</a></li>
+                <li class="nav-item"><a class="nav-link" href="/create-order">Create Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="/orders">View Orders</a></li>
+                <li class="nav-item"><a class="nav-link" href="/cycle-count">Cycle Count</a></li>
+            </ul>
+            <form class="d-flex ms-3" action="{{ url_for('logout') }}" method="POST">
+                <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+
+    <h1 class="text-center">Rack Status</h1>
+
+    <!-- Action Buttons -->
+    <div class="text-left mb-4 mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary d-inline-block">← Dashboard</a>
+        <a href="{{ url_for('print_empty_racks') }}" target="_blank" class="btn btn-primary d-inline-block ms-2">🖨️ Print Empty Racks</a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mt-2">
+        <div class="col-md-4">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-header">Total Racks</div>
+                <div class="card-body"><h2 class="card-title">{{ total_racks }}</h2></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Occupied Racks</div>
+                <div class="card-body"><h2 class="card-title">{{ occupied_count }}</h2></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-header">Empty Racks</div>
+                <div class="card-body"><h2 class="card-title">{{ empty_count }}</h2></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend mb-4">
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#d1e7dd; border:1px solid #a3cfbb;"></div>
+            <span>Occupied</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#fff3cd; border:1px solid #ffda6a;"></div>
+            <span>⚠️ Mixed Pack Size</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#f1f3f5; border:1px solid #dee2e6;"></div>
+            <span>Empty</span>
+        </div>
+    </div>
+
+    <!-- One card per aisle -->
+    {% for aisle, data in aisle_data.items() %}
+    <div class="aisle-card">
+
+        <!-- Aisle header with stats -->
+        <div class="aisle-header">
+            <span class="aisle-label">Aisle {{ aisle }}</span>
+            <div class="aisle-stats d-flex gap-2">
+                {% set occ = namespace(count=0) %}
+                {% set mix = namespace(count=0) %}
+                {% for bay in data.bays %}{% for col in data.cols %}{% for bin in data.bins %}
+                    {% set rn = aisle ~ '-' ~ '%02d'|format(bay) ~ '-' ~ col ~ bin %}
+                    {% if rack_lookup.get(rn) and rack_lookup[rn].is_occupied %}
+                        {% set occ.count = occ.count + 1 %}
+                        {% if rack_lookup[rn].has_mixed_packsize %}{% set mix.count = mix.count + 1 %}{% endif %}
+                    {% endif %}
+                {% endfor %}{% endfor %}{% endfor %}
+                <span class="bg-success text-white">{{ occ.count }} occupied</span>
+                {% if mix.count > 0 %}
+                <span class="bg-warning text-dark">⚠️ {{ mix.count }} mixed</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Physical grid table -->
+        <table class="rack-grid-table">
+            <!-- Bay number headers -->
+            <thead>
+                <tr>
+                    <th class="col-label"></th>  {# spacer for col label column #}
+                    {% for bay in data.bays %}
+                        <th colspan="{{ data.bins|length }}" class="bay-label text-center bay-group">
+                            Bay {{ '%02d'|format(bay) }}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for col in data.cols %}
+                <tr>
+                    <!-- Column letter label -->
+                    <td class="col-label">{{ col }}</td>
+
+                    {% for bay in data.bays %}
+                        {% for bin in data.bins %}
+                            {% set rn = aisle ~ '-' ~ '%02d'|format(bay) ~ '-' ~ col ~ bin %}
+                            {% set info = rack_lookup.get(rn) %}
+                            {% if info %}
+                                {% if info.is_occupied and info.has_mixed_packsize %}
+                                    <td><div class="rack-cell mixed" title="{{ rn }} ⚠️ Mixed pack size | Qty: {{ info.total_qty }}">
+                                        {{ rn }}
+                                        <span class="qty">{{ info.total_qty }}</span>
+                                        <span class="warn">⚠️</span>
+                                    </div></td>
+                                {% elif info.is_occupied %}
+                                    <td><div class="rack-cell occupied" title="{{ rn }} | Qty: {{ info.total_qty }}">
+                                        {{ rn }}
+                                        <span class="qty">{{ info.total_qty }}</span>
+                                    </div></td>
+                                {% else %}
+                                    <td><div class="rack-cell empty" title="{{ rn }} — Empty">
+                                        {{ rn }}
+                                    </div></td>
+                                {% endif %}
+                            {% else %}
+                                <td><div class="rack-cell missing">—</div></td>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+    {% endfor %}
+
+</div><!-- end container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
