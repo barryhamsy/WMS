@@ -160,6 +160,8 @@ def export_stocks_excel():
         print(f"Error occurred: {str(e)}")
         return "Error exporting data", 500
 
+# REPLACE your existing submit-stock route in app.py with this:
+
 @app.route('/submit-stock', methods=['POST'])
 @login_required
 def submit_stock():
@@ -168,6 +170,60 @@ def submit_stock():
     if not stock_list or len(stock_list) == 0:
         return jsonify({'error': 'No stock data provided'}), 400
 
+    # Special racks that skip capacity checks
+    special_bays = {"Disposal", "Damage", "Tinter", "Floor", "Chrome Room"}
+
+    # ── PRE-FLIGHT CAPACITY CHECK (before touching the DB) ────────────────
+    # Group all incoming lines by racking_number to get total incoming per rack
+    from collections import defaultdict
+    incoming_by_rack = defaultdict(int)
+    for stock_data in stock_list:
+        racking_number = stock_data.get('racking_number', '')
+        quantity = int(stock_data.get('quantity', 0))
+        if racking_number and quantity > 0:
+            incoming_by_rack[racking_number] += quantity
+
+    for racking_number, total_incoming in incoming_by_rack.items():
+        if racking_number in special_bays:
+            continue
+
+        # Get current DB quantity in this rack
+        current_stocks = Stock.query.filter_by(racking_number=racking_number).all()
+        current_qty = sum(s.quantity for s in current_stocks)
+
+        # Get max_capacity from the FIRST incoming SKU for this rack
+        # (all items in same rack should share same pack size group)
+        max_capacity = None
+        for stock_data in stock_list:
+            if stock_data.get('racking_number') != racking_number:
+                continue
+            material_number = stock_data.get('material_number', '')
+            sku = SKU.query.filter_by(material_number=material_number).first()
+            if sku and sku.pack_size and sku.pack_size.max_capacity:
+                try:
+                    max_capacity = int(sku.pack_size.max_capacity)
+                    break
+                except Exception:
+                    pass
+
+        if max_capacity is None:
+            # No pack size configured — skip capacity check for this rack
+            continue
+
+        total_after = current_qty + total_incoming
+        if total_after > max_capacity:
+            return jsonify({
+                'error': (
+                    f'Capacity exceeded for rack {racking_number}!\n'
+                    f'Max capacity : {max_capacity}\n'
+                    f'Currently in rack : {current_qty}\n'
+                    f'You are trying to add : {total_incoming}\n'
+                    f'Total would be : {total_after}\n\n'
+                    f'GR has been BLOCKED. Please reduce quantity or choose a different rack.'
+                )
+            }), 400
+
+    # ── ALL RACKS PASS — now commit ───────────────────────────────────────
     for stock_data in stock_list:
         material_number = stock_data.get('material_number')
         quantity = stock_data.get('quantity')
@@ -176,13 +232,10 @@ def submit_stock():
         racking_number = stock_data.get('racking_number')
         remarks = stock_data.get('remarks')
 
-        # Find the SKU by material number
         sku = SKU.query.filter_by(material_number=material_number).first()
-
         if not sku:
             return jsonify({'error': f'SKU with material number {material_number} not found'}), 404
 
-        # Check for existing stock with the same attributes
         existing_stock = Stock.query.filter_by(
             sku_id=sku.id,
             batch_number=batch_number,
@@ -192,19 +245,15 @@ def submit_stock():
         ).first()
 
         if existing_stock:
-            # Update the existing stock quantity
             existing_stock.quantity += quantity
-
-            # Log the change in the stock history
             stock_history = StockHistory(
                 stock_id=existing_stock.id,
-                change_type='GR',  # Goods Receiving
-                quantity=quantity,  # Log the added quantity
-                username = current_user.username
+                change_type='GR',
+                quantity=quantity,
+                username=current_user.username
             )
             db.session.add(stock_history)
         else:
-            # Create a new Stock entry
             new_stock = Stock(
                 sku_id=sku.id,
                 quantity=quantity,
@@ -213,24 +262,18 @@ def submit_stock():
                 racking_number=racking_number,
                 remarks=remarks
             )
-
-            # Add the new stock to the session
             db.session.add(new_stock)
-            db.session.flush()  # Flush to get the new_stock.id
+            db.session.flush()
 
-            # Create a StockHistory entry for this stock
             stock_history = StockHistory(
-                stock_id=new_stock.id,  # Use the new stock's ID
-                change_type='GR',  # Goods Receiving
+                stock_id=new_stock.id,
+                change_type='GR',
                 quantity=quantity,
-                username=current_user.username # Log the added quantity
+                username=current_user.username
             )
-
-            # Add the stock history to the session
             db.session.add(stock_history)
 
-    db.session.commit()  # Commit all stock entries and history to the database
-
+    db.session.commit()
     return jsonify({'message': 'Stock items submitted successfully!'}), 200
 
 @app.route('/save-stock/<int:stock_id>', methods=['POST'])

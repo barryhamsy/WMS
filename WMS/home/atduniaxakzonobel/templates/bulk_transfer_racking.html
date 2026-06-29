@@ -277,10 +277,15 @@
         });
     });
 
-    // Execute Transfer
-    document.getElementById('executeTransferBtn').addEventListener('click', function() {
-        const destination = document.getElementById('destinationRacking').value;
-        
+    // ============================================================
+    // Execute Transfer - WITH SAFETY PROTECTIONS (handles 409 warnings)
+    // ============================================================
+    function doExecuteTransfer(force) {
+        if (force === undefined) force = false;
+
+        var btn = document.getElementById('executeTransferBtn');
+        var destination = document.getElementById('destinationRacking').value;
+
         if (!destination) {
             alert('Please select a destination racking!');
             return;
@@ -291,75 +296,123 @@
             return;
         }
 
-        // Collect transfer data
-        const transfers = [];
-        selectedStocks.forEach(stockId => {
-            const row = document.querySelector(`tr[data-stock-id="${stockId}"]`);
-            const qtyInput = row.querySelector('.qty-input');
-            const quantity = parseInt(qtyInput.value) || 0;
-            const maxQty = parseInt(row.dataset.maxQty);
+        var transfers = [];
+        var sourceRacks = new Set();
+        var totalQty = 0;
+        var hasError = false;
+
+        selectedStocks.forEach(function(stockId) {
+            var row = document.querySelector('tr[data-stock-id="' + stockId + '"]');
+            var qtyInput = row.querySelector('.qty-input');
+            var quantity = parseInt(qtyInput.value) || 0;
+            var maxQty = parseInt(row.dataset.maxQty);
 
             if (quantity <= 0) {
-                alert(`Invalid quantity for ${row.dataset.material}`);
+                alert('Invalid quantity for ' + row.dataset.material);
+                hasError = true;
                 return;
             }
 
             if (quantity > maxQty) {
-                alert(`Quantity exceeds available stock for ${row.dataset.material} (max: ${maxQty})`);
+                alert('Quantity exceeds available stock for ' + row.dataset.material + ' (max: ' + maxQty + ')');
+                hasError = true;
                 return;
             }
 
-            transfers.push({
-                stock_id: stockId,
-                quantity: quantity
-            });
+            transfers.push({ stock_id: stockId, quantity: quantity });
+            sourceRacks.add(row.dataset.racking);
+            totalQty += quantity;
         });
 
-        if (transfers.length === 0) {
-            alert('No valid transfers to execute!');
+        if (hasError || transfers.length === 0) {
+            if (transfers.length === 0 && !hasError) alert('No valid transfers to execute!');
             return;
         }
 
-        // Confirm
-        if (!confirm(`Transfer ${transfers.length} items to ${destination}?`)) {
-            return;
+        if (!force) {
+            var sourceList = Array.from(sourceRacks);
+            var preview = sourceList.slice(0, 8).join(', ') + (sourceList.length > 8 ? '...' : '');
+            var confirmMsg = 'CONFIRM BULK TRANSFER\n\n' +
+                'Items to move : ' + transfers.length + '\n' +
+                'Total quantity: ' + totalQty + ' units\n' +
+                'From racks    : ' + preview + '\n' +
+                'Destination   : ' + destination + '\n\n' +
+                'Are you SURE you want to move ALL of this into ' + destination + '?';
+
+            if (!confirm(confirmMsg)) return;
+
+            if (transfers.length > 5) {
+                var typed = prompt(
+                    'LARGE TRANSFER DETECTED (' + transfers.length + ' lines)!\n\n' +
+                    'To confirm, type the destination racking exactly:\n\n' + destination
+                );
+                if (typed !== destination) {
+                    alert('Confirmation failed. Transfer cancelled.');
+                    return;
+                }
+            }
         }
 
-        // Execute
-        this.disabled = true;
-        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Transferring...';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Transferring...';
 
         fetch('/bulk-transfer-racking/execute', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 transfers: transfers,
-                destination_racking: destination
+                destination_racking: destination,
+                force: force
             })
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) {
+            return response.json().then(function(data) {
+                return { status: response.status, data: data };
+            });
+        })
+        .then(function(result) {
+            var status = result.status;
+            var data = result.data;
+
+            if (status === 409 && data.requires_confirmation) {
+                btn.disabled = false;
+                btn.innerHTML = '✓ Execute Transfer';
+                if (confirm(data.warning + '\n\nProceed anyway?')) {
+                    doExecuteTransfer(true);
+                }
+                return;
+            }
+
+            if (status !== 200 && data.error) {
+                alert('Error: ' + data.error);
+                btn.disabled = false;
+                btn.innerHTML = '✓ Execute Transfer';
+                return;
+            }
+
             if (data.success) {
-                alert(`✓ Success! Transferred ${data.successful.length} items to ${destination}`);
-                if (data.failed.length > 0) {
-                    alert(`⚠ Failed transfers: ${data.failed.length}`);
+                alert('Success! Transferred ' + data.successful.length + ' items to ' + destination);
+                if (data.failed && data.failed.length > 0) {
+                    alert('Failed transfers: ' + data.failed.length);
                     console.log('Failed:', data.failed);
                 }
                 location.reload();
             } else {
-                alert(`Error: ${data.error}`);
-                this.disabled = false;
-                this.innerHTML = '✓ Execute Transfer';
+                alert('Error: ' + (data.error || 'Unknown error'));
+                btn.disabled = false;
+                btn.innerHTML = '✓ Execute Transfer';
             }
         })
-        .catch(error => {
+        .catch(function(error) {
             console.error('Error:', error);
             alert('Error executing transfer!');
-            this.disabled = false;
-            this.innerHTML = '✓ Execute Transfer';
+            btn.disabled = false;
+            btn.innerHTML = '✓ Execute Transfer';
         });
+    }
+
+    document.getElementById('executeTransferBtn').addEventListener('click', function() {
+        doExecuteTransfer(false);
     });
 </script>
 
